@@ -1,0 +1,30 @@
+# osm_parser:
+#   ros__parameters:
+#     osm_file: "/root/slam/slam/osm/osm-nav/src/osm_navigation/osm_file/map.osm"
+#     osm_match_tags:
+#       - "name"
+#       - "至诚大道"
+#       - "name"
+#       - "独秀大道（南冀）"
+#       - "name"
+#       - "独秀大道（北冀）"
+#       - "name"
+#       - "至坚路"
+#       # - "highway"
+#       # - "unclassified"
+#       - "highway"
+#       - "service"
+
+lci_calibration:
+  ros__parameters:
+    # bag_file: "/root/workspace/data/OA-LICalib/bag/simu_bag/simu_bag.db3"
+    # lidar_topic_name: "/scan_sim"
+    # camera_topic_name: ""
+    # imu_topic_name: "/imu_sim"
+    # time_for_cali: 10.0 # [s] float
+
+    bag_file: "/root/workspace/data/A1_build/A1_building_50/A1_building_50.db3"
+    lidar_topic_name: "/points_raw"
+    camera_topic_name: ""
+    imu_topic_name: "/imu/data"
+    time_for_cali: 40.0 # [s] float

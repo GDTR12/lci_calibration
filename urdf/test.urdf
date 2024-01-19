@@ -1,0 +1,23 @@
+<robot name="myrobot">
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <box size="0.2 0.2 0.2"/>
+            </geometry>
+            <origin xyz="0.0 0.0 0.0"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.2 0.2 0.2"/>
+            </geometry>
+            <origin xyz="0.0 0.0 0.0"/>
+        </collision>
+        <inertial>
+            <mass value="0.1"/>
+            <inertia ixx="0.000190416666667" ixy="0" ixz="0" iyy="0.0001904" iyz="0" izz="0.00036"/>
+        </inertial>
+    </link>
+    <gazebo reference="base_link">
+        <material>Gazebo/Red</material>
+    </gazebo>
+</robot>
