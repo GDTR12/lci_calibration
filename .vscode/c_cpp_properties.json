@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "name": "linux-gcc-x64",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/ros/rolling/include",
+        "/usr/include/eigen3/",
+        "/usr/local/include/sophus/",
+        "/usr/local/include/",
+        "/usr/include/pcl-1.10",
+        "${workspaceFolder}/third_party/Kontiki/include",
+        "${workspaceFolder}/third_party/basalt/include",
+        "${workspaceFolder}/third_party/lie_spline/include",
+        "${workspaceFolder}/third_party/ndt_omp/include"
+      ],
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "${default}",
+      "cppStandard": "${default}",
+      "intelliSenseMode": "linux-gcc-x64",
+      "compilerArgs": [
+        ""
+      ]
+    }
+  ],
+  "version": 4
+}

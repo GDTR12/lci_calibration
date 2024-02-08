@@ -8,7 +8,6 @@ class LCICali: public rclcpp::Node
 {
 private:
     std::shared_ptr<Input> input;
-    std::shared_ptr<BSplineIMU> trajetory;
 public:
     LCICali();
     ~LCICali();

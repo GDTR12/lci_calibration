@@ -13,7 +13,7 @@ from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import GroupAction
 
-n = int(input("Run Launch(1) or Test(2):\n"))
+n = int(input("Run(1) or Debug(2):\n"))
 
     
 
@@ -48,23 +48,24 @@ def generate_launch_description():
             executable="lci_calibration",
             parameters=[config_param],
             output='screen',
-            arguments=['--ros-args', '--log-level', LaunchConfiguration("log_level")]
+            arguments=['--ros-args', '--log-level', LaunchConfiguration("log_level") ]
         )
     elif n == 2:
         node = Node(
             name="lci_calibration",
             package="lci_calibration",
-            executable="lci_test",
+            executable="lci_calibration",
             parameters=[config_param],
             output='screen',
-            arguments=['--ros-args', '--log-level', LaunchConfiguration("log_level")]
+            prefix=["gdbserver localhost:3000"],
+            arguments=['--ros-args', '--log-level', LaunchConfiguration("log_level") ]
         )
     else:
         print("Wrong option, exit!")
         exit()
     return ld(
         [
-            rviz,
+            # rviz,
             logger,
             node
         ]

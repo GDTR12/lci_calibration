@@ -43,17 +43,18 @@ enum LidarModelType {
   RS_16,
   RS_M1,
 };
-
+template<typename PointType = pcl::PointNormal>
 struct LiDARFeature {
+  using PCL = pcl::PointCloud<PointType>;
   LiDARFeature()
       : timestamp(0),
         time_max(0),
-        full_features(new PCL_XYZIT),
-        raw_data(new  PCL_XYZIT) {}
+        full_features(new PCL),
+        raw_data(new PCL) {}
 
-  LiDARFeature(const LiDARFeature& fea) { *this = fea; }
+  LiDARFeature(const LiDARFeature<PointType>& fea) { *this = fea; }
 
-  void set(LiDARFeature* lf1, LiDARFeature* lf2) {
+  void set(LiDARFeature<PointType>* lf1, LiDARFeature<PointType>* lf2) {
     lf1->timestamp = lf2->timestamp;
     lf1->time_max = lf2->time_max;
     *lf1->full_features = *lf2->full_features;
@@ -69,8 +70,8 @@ struct LiDARFeature {
 
   double timestamp;
   double time_max;  // [timestamp, max_time] full_features
-  PCL_XYZIT::Ptr full_features;
-  PCL_XYZIT::Ptr raw_data;
+  typename PCL::Ptr full_features;
+  typename PCL::Ptr raw_data;
 };
 
 enum GeometryType { Line = 0, Plane };

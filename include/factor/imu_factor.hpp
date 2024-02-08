@@ -7,18 +7,27 @@
 
 namespace lci_cali{
 
-class SplineMeasurementFactor: public basalt::CeresSplineHelper<4>
+
+class CaliSo3Spline
 {
 private:
-    IMUData imu_data;
+
 public:
-    SplineMeasurementFactor(/* args */);
-    ~SplineMeasurementFactor();
-    template<class T>
-    void operator()(T const* const* sKnots, T* residual) const{
-        
-    }
+    CaliSo3Spline(/* args */);
+    ~CaliSo3Spline();
 };
+
+CaliSo3Spline::CaliSo3Spline(/* args */)
+{
+
+}
+
+CaliSo3Spline::~CaliSo3Spline()
+{
+}
+
+
+
 
 }
 

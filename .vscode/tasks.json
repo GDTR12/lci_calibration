@@ -1,0 +1,15 @@
+
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "debug_server",
+            "type": "shell",
+            "command": "source /opt/ros/rolling/setup.zsh && source $(pwd)/install/local_setup.zsh && ros2 launch lci_calibration lci_calibration.launch.py",  // 替换为实际的构建命令
+            "args": [],
+            "group": {
+                "isDefault": true
+            }
+        }
+    ]
+}

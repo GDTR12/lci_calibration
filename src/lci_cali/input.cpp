@@ -72,13 +72,13 @@ Input::Input(std::string name):rclcpp::Node(name)
         if(msg->topic_name == topic_pcl){
             sensor_msgs::msg::PointCloud2::SharedPtr one_pcl = std::make_shared<sensor_msgs::msg::PointCloud2>();
             slz_pcl.deserialize_message(&serialized_msg, one_pcl.get());
-
-            liso::LiDARFeature lidar_data;
-
+            
+            sensor_data::LidarData<PointIRT> lidar_data;
+            lidar_data.data = pcl::make_shared<pcl::PointCloud<lslidar::PointXYZIRT>>();
             lidar_data.timestamp = (rclcpp::Time(one_pcl->header.stamp).seconds() - start_time);
-            lidar_data.raw_data = pcl::make_shared<PCL_XYZIT>();
+            lidar_data.raw_data = one_pcl;
             lidar_data.time_max = 0;
-            pcl::fromROSMsg(*one_pcl, *lidar_data.raw_data);
+            pcl::fromROSMsg(*one_pcl, *lidar_data.data);
             lidar_source.push_back(lidar_data);
             RCLCPP_DEBUG(this->get_logger(), "Received %s at %d", topic_pcl.c_str(), one_pcl->header.stamp.nanosec);
         }

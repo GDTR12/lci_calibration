@@ -23,7 +23,7 @@ lci_calibration:
     # imu_topic_name: "/imu_sim"
     # time_for_cali: 10.0 # [s] float
 
-    bag_file: "/root/workspace/data/A1_build/A1_building_50/A1_building_50.db3"
+    bag_file: "/root/workspace/data/calibration/lidar_imu/lidar_imu.db3"
     lidar_topic_name: "/points_raw"
     camera_topic_name: ""
     imu_topic_name: "/imu/data"

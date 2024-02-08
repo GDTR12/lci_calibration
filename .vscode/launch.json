@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ros2",
+      "request": "launch",
+      "type": "cppdbg",
+      "MIMode": "gdb",
+      "miDebuggerServerAddress": "localhost:3000",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceRoot}/install/lci_calibration/lib/lci_calibration/lci_calibration",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+        
+      ],
+
+      // "preLaunchTask": "debug_server"
+    },
+    {
+      "name": "(gdb) Launch",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceRoot}/install/lci_calibration/lib/lci_calibration/lci_calibration",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "为 gdb 启用整齐打印",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "cwd": "/root/workspace/ros2/src/lci_calibration/app",
+      "program": "/root/workspace/ros2/src/lci_calibration/app/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

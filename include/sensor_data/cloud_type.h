@@ -44,12 +44,8 @@ struct PointXYZIRT {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
 } EIGEN_ALIGN16;
 
-struct PointXYZIT {
-  PCL_ADD_POINT4D;                 // quad-word XYZ
-  float intensity;                 ///< laser intensity reading
-  float time;                      ///< laser time reading
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
-} EIGEN_ALIGN16;
+
+
 
 
 struct PointXYZT {
@@ -79,13 +75,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZIRT,     //
                                   (float, time, time)            //
 )
 
-POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZIT,     //
-                                  (float, x, x)                  //
-                                  (float, y, y)                  //
-                                  (float, z, z)                  //
-                                  (float, intensity, intensity)  //
-                                  (double, time, time)            //
-)
+
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZT,        //
                                   (float, x, x)                   //
@@ -102,11 +92,34 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIR8Y,                  //
                                   (std::uint32_t, t, t)               //
 )
 
+
+namespace lslidar{
+
+struct PointXYZIRT {
+  PCL_ADD_POINT4D;                 // quad-word XYZ
+  float intensity;                 ///< laser intensity reading
+  uint16_t ring;
+  double time;                      ///< laser time reading
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
+} EIGEN_ALIGN16;
+
+}
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(lslidar::PointXYZIRT,     //
+                                  (float, x, x)                  //
+                                  (float, y, y)                  //
+                                  (float, z, z)                  //
+                                  (float, intensity, intensity)  //
+                                  (uint16_t, ring, ring)
+                                  (double, time, time)            //
+)
+
 typedef velodyne_pcl::PointXYZIRT RTPoint;
 typedef pcl::PointCloud<RTPoint> RTPointCloud;
 
-typedef velodyne_pcl::PointXYZIT PointXYZIT;
-typedef pcl::PointCloud<PointXYZIT> PCL_XYZIT;
+typedef lslidar::PointXYZIRT PointIRT;
+typedef pcl::PointCloud<PointIRT> Pcl_IRT;
+
 
 typedef velodyne_pcl::PointXYZT PosPoint;
 typedef pcl::PointCloud<PosPoint> PosCloud;

@@ -6,8 +6,7 @@
 #include "rosbag2_cpp/converter.hpp"
 #include "rosbag2_cpp/reader.hpp"
 #include "sensor_data/imu_data.hpp"
-#include "sensor_data/lidar_feature.h"
-
+#include "sensor_data/lidar_data.h"
 
 namespace lci_cali
 {
@@ -27,15 +26,16 @@ private:
     rclcpp::Serialization<sensor_msgs::msg::Image> slz_img;
 
     std::vector<IMUData, Eigen::aligned_allocator<IMUData>> imu_source;
-    std::vector<liso::LiDARFeature> lidar_source;
+    std::vector<sensor_data::LidarData<PointIRT>> lidar_source;
 
     double time_for_cali = 0;
 public:
-    double GetEndtime(){
+    double getEndTime(){
         return time_for_cali;
     }
     explicit Input(std::string name);
-    std::vector<IMUData, Eigen::aligned_allocator<IMUData>>& GetIMUData(){return imu_source;}
+    std::vector<IMUData, Eigen::aligned_allocator<IMUData>>& getIMUData(){return imu_source;}
+    std::vector<sensor_data::LidarData<PointIRT>>& getLidarData(){return lidar_source;}
     ~Input();
 
 };
