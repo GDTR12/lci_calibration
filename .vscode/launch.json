@@ -8,7 +8,7 @@
       "MIMode": "gdb",
       "miDebuggerServerAddress": "localhost:3000",
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceRoot}/install/lci_calibration/lib/lci_calibration/lci_calibration",
+      "program": "${workspaceRoot}/../../install/lci_calibration/lib/lci_calibration/lci_calibration",
       "setupCommands": [
         {
           "description": "Enable pretty-printing for gdb",

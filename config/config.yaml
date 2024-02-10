@@ -1,0 +1,17 @@
+ndt_resolution: 1
+ndt_planeMinPoints: 5
+ndt_cellMinPoints: 3
+
+ndt_filter: true
+start_iterats: 52
+iterats: 60
+
+reverse: false
+
+if_mark0: false
+if_mark1: false
+if_mark2: false
+if_mark3: true
+if_mark4: true
+if_mark5: true
+

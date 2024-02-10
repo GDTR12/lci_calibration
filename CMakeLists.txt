@@ -39,7 +39,7 @@ find_package(tf2_ros REQUIRED)
 find_package(fmt REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(Pangolin REQUIRED)
-
+find_package(yaml-cpp REQUIRED)
 find_package(ndt_omp REQUIRED)
 
 # message("Pangolin_LIBRARIES: ${Pangolin_LIBRARIES}")
@@ -68,7 +68,7 @@ list(REMOVE_ITEM LIBRARY_SRCS ${NODE_SRCS})
 list(REMOVE_ITEM LIBRARY_SRCS ${TEST_SRCS})
 # list(REMOVE_ITEM LIBRARY_SRCS ${THIRD_PARTY_SRCS})
 
-
+message("LIBRARY_SRCS: ${LIBRARY_SRCS}")
 
 set(INCLUDE_PATH "./include")
 add_executable(lci_calibration ${LIBRARY_SRCS} ${NODE_SRCS})
@@ -99,6 +99,7 @@ target_link_libraries(lci_calibration
     fmt
     ${Pangolin_LIBRARY}
     ndt_omp
+    yaml-cpp
     )
 
 

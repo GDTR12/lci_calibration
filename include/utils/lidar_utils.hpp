@@ -181,6 +181,16 @@ public:
         auto window = std::make_shared<LidarWindow>(window_title, w, h, params);
         window->Show(&lidar_data);
     }
+
+
+// template<typename PointType = pcl::PointXYZ>
+// class ShowOnePcl{
+//     typedef pcl::PointCloud<PointType> PCL;
+// private:
+//     std::vector<typename PCL::Ptr> pcl_data; 
+
+// public:    
+// };
     
 
 
