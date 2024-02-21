@@ -1,0 +1,4 @@
+source;share/lci_calibration/local_setup.bash
+source;share/lci_calibration/local_setup.dsv
+source;share/lci_calibration/local_setup.sh
+source;share/lci_calibration/local_setup.zsh

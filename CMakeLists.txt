@@ -61,7 +61,7 @@ message(STATUS "Found Eigen headers in: ${EIGEN3_INCLUDE_DIR}")
 message(STATUS "Found ceres headers in: ${CERES_INCLUDE_DIRS}")
 
 file(GLOB_RECURSE LIBRARY_SRCS "./*.cpp")
-file(GLOB_RECURSE NODE_SRCS "./app/*_node.cpp")
+file(GLOB_RECURSE NODE_SRCS "./src/app/*_node.cpp")
 file(GLOB_RECURSE TEST_SRCS "./test/*.cpp")
 # file(GLOB_RECURSE THIRD_PARTY_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/*.cpp")
 list(REMOVE_ITEM LIBRARY_SRCS ${NODE_SRCS})

@@ -272,103 +272,111 @@ void viewData(std::vector<sensor_data::LidarData<PointIRT>>& lidar_data){
 
 
 
+// int main(int argc, char const *argv[])
+// {
+//     std::cout << __LINE__ << std::endl;
+//     rclcpp::init(argc,argv);
+//     // NdtOmpUtils<lslidar::PointXYZIRT, lslidar::PointXYZIRT> util;
+//     ConfigYaml config;
+
+//     ndt_utils::NdtOmpUtils<pcl::PointXYZ, pcl::PointXYZ> util(12, config.cfg_root["ndt_filter"].as<bool>());
+
+//     std::cout << __LINE__ << std::endl;
+//     std::shared_ptr<lci_cali::Input> input = std::make_shared<lci_cali::Input>("input");
+//     auto lidar_data = input->getLidarData();
+//     // viewData(lidar_data);
+//     pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> map = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+//     // pcl::fromROSMsg(*lidar_data[0].raw_data, *map);
+//     pcl::visualization::PCLVisualizer viewer ("Simple Cloud Viewer");
+//     Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+//     for(int i = config.cfg_root["start_iterats"].as<int>(); i < lidar_data.size() - 1; i++) {
+//         Eigen::Matrix4f result;
+//         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_next = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+//         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_now = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+//         // pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> res = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+//         pcl::fromROSMsg(*lidar_data[i].raw_data, *pcl_now);
+//         pcl::fromROSMsg(*lidar_data[i+1].raw_data, *pcl_next);
+        
+//         double cost_ms;
+//         if(config.cfg_root["reverse"].as<bool>()){
+//              cost_ms = util.align(pcl_now, pcl_next, result);
+//         }else{
+//              cost_ms = util.align(pcl_next, pcl_now, result);
+//         }
+//         transform = transform * result;
+//         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> next_transformed = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+
+//         if(config.cfg_root["if_mark4"].as<bool>()){
+//             pcl::transformPointCloud(*pcl_next, *next_transformed, transform);
+//         }else{
+//             pcl::transformPointCloud(*pcl_next, *next_transformed, result);
+//         }
+//         std::cout << result << std::endl;
+//         std::cout << next_transformed->points.size() << std::endl;
+//         (*map) += (*next_transformed);
+//         std::cout << map->points.size() << std::endl;
+//         // map->concatenate()
+//         // auto p1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+//         // auto p2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+//         // double cost_ms = util.align(p1, p2, result);
+
+//         // pcl::PointCloud<pcl::PointXYZ>::Ptr ptr_transformed(next_transformed);
+//         // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_red(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_now, 255, 0, 0));
+//         // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_green(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_next, 0, 255, 0));
+//         // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_blue(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(ptr_transformed, 0, 0, 255));
+//         // viewer.addPointCloud(pcl_now, *color_red, std::string("r%d", i));
+//         // viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
+//         // viewer.addPointCloud(ptr_transformed, *color_blue,std::string("b%d", i));
+//         // viewer.updatePointCloud(pcl_now);
+//         // viewer.updatePointCloud(pcl_next);
+//         // viewer.updatePointCloud(ptr_transformed);
+
+//         std::cout << cost_ms << " " << std::endl;
+//         if(i == config.cfg_root["iterats"].as<int>())break;
+//     }
+//     if(config.cfg_root["if_mark1"].as<bool>()){
+//         viewer.spin();
+//     }
+//     //该注册函数在渲染输出时每次都调用
+//     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+//     if(config.cfg_root["if_mark0"].as<bool>()) {
+//         cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+//         pcl::fromROSMsg(*lidar_data.back().raw_data, *cloud);
+//     }else{
+//         cloud = map;
+//     }
+//     std::vector<std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::Matrix<double, 4, 1>>> planes;
+//     util.ndtSurferMap(planes, cloud, 0.6);
+//     if(config.cfg_root["if_mark2"].as<bool>()) {
+//     auto cloud_all(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(cloud, 80, 80, 80));
+//     viewer.addPointCloud(cloud, *cloud_all, std::string("all"));
+//     viewer.updatePointCloud(cloud);
+//     }
+
+//     int i = 1;
+//     for(auto& plane : planes){
+//         auto pl = plane.first;
+//         auto color = pcl::getRandomColor();
+
+//         pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr cloud_color(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pl, color.r, color.g, color.b));
+//         viewer.addPointCloud(pl, *cloud_color, std::string("%d", i++));
+//         viewer.updatePointCloud(pl);
+//     }
+
+//     viewer.spin();
+
+//     return 0;
+// }
+
+
 int main(int argc, char const *argv[])
 {
-    std::cout << __LINE__ << std::endl;
     rclcpp::init(argc,argv);
-    // NdtOmpUtils<lslidar::PointXYZIRT, lslidar::PointXYZIRT> util;
     ConfigYaml config;
 
-    ndt_utils::NdtOmpUtils<pcl::PointXYZ, pcl::PointXYZ> util(12, config.cfg_root["ndt_filter"].as<bool>());
-
-    std::cout << __LINE__ << std::endl;
     std::shared_ptr<lci_cali::Input> input = std::make_shared<lci_cali::Input>("input");
     auto lidar_data = input->getLidarData();
-    // viewData(lidar_data);
-    pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> map = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    // pcl::fromROSMsg(*lidar_data[0].raw_data, *map);
-    pcl::visualization::PCLVisualizer viewer ("Simple Cloud Viewer");
-    Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
-    for(int i = config.cfg_root["start_iterats"].as<int>(); i < lidar_data.size() - 1; i++) {
-        Eigen::Matrix4f result;
-        pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_next = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-        pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_now = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-        // pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> res = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-        pcl::fromROSMsg(*lidar_data[i].raw_data, *pcl_now);
-        pcl::fromROSMsg(*lidar_data[i+1].raw_data, *pcl_next);
+
         
-        double cost_ms;
-        if(config.cfg_root["reverse"].as<bool>()){
-             cost_ms = util.align(pcl_now, pcl_next, result);
-        }else{
 
-             cost_ms = util.align(pcl_next, pcl_now, result);
-        }
-        transform = transform * result;
-        pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> next_transformed = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-
-        if(config.cfg_root["if_mark4"].as<bool>()){
-            pcl::transformPointCloud(*pcl_next, *next_transformed, transform);
-        }else{
-            pcl::transformPointCloud(*pcl_next, *next_transformed, result);
-        }
-        std::cout << result << std::endl;
-        std::cout << next_transformed->points.size() << std::endl;
-        (*map) += (*next_transformed);
-        std::cout << map->points.size() << std::endl;
-        // map->concatenate()
-        // auto p1 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-        // auto p2 = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
-        // double cost_ms = util.align(p1, p2, result);
-
-        // pcl::PointCloud<pcl::PointXYZ>::Ptr ptr_transformed(next_transformed);
-        // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_red(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_now, 255, 0, 0));
-        // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_green(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_next, 0, 255, 0));
-        // pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_blue(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(ptr_transformed, 0, 0, 255));
-        // viewer.addPointCloud(pcl_now, *color_red, std::string("r%d", i));
-        // viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
-        // viewer.addPointCloud(ptr_transformed, *color_blue,std::string("b%d", i));
-        // viewer.updatePointCloud(pcl_now);
-        // viewer.updatePointCloud(pcl_next);
-        // viewer.updatePointCloud(ptr_transformed);
-
-        std::cout << cost_ms << " " << std::endl;
-        if(i == config.cfg_root["iterats"].as<int>())break;
-    }
-    if(config.cfg_root["if_mark1"].as<bool>()){
-        viewer.spin();
-    }
-    //该注册函数在渲染输出时每次都调用
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-    if(config.cfg_root["if_mark0"].as<bool>()) {
-        cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-        pcl::fromROSMsg(*lidar_data.back().raw_data, *cloud);
-    }else{
-        cloud = map;
-    }
-    std::vector<std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::Matrix<double, 4, 1>>> planes;
-    util.ndtSurferMap(planes, cloud, 0.6);
-    if(config.cfg_root["if_mark2"].as<bool>()) {
-    auto cloud_all(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(cloud, 80, 80, 80));
-    viewer.addPointCloud(cloud, *cloud_all, std::string("all"));
-    viewer.updatePointCloud(cloud);
-    }
-
-    int i = 1;
-    for(auto& plane : planes){
-        auto pl = plane.first;
-        auto color = pcl::getRandomColor();
-
-        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr cloud_color(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pl, color.r, color.g, color.b));
-        viewer.addPointCloud(pl, *cloud_color, std::string("%d", i++));
-        viewer.updatePointCloud(pl);
-    }
-
-    viewer.spin();
-
-    return 0;
 }
-
-
-
-
