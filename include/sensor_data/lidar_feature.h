@@ -44,8 +44,10 @@ enum LidarModelType {
   RS_M1,
 };
 template<typename PointType = pcl::PointNormal>
-struct LiDARFeature {
+class LiDARFeature
+{
   using PCL = pcl::PointCloud<PointType>;
+public:
   LiDARFeature()
       : timestamp(0),
         time_max(0),

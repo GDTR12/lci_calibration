@@ -27,4 +27,9 @@ lci_calibration:
     lidar_topic_name: "/points_raw"
     camera_topic_name: ""
     imu_topic_name: "/imu/data"
-    time_for_cali: 40.0 # [s] float
+    end_time: 57
+    # bag_file: "/root/workspace/data/OA-LICalib/bag/simu_bag/simu_bag.db3"
+    # lidar_topic_name: "/scan_sim"
+    # camera_topic_name: ""
+    # imu_topic_name: "/imu_sim"
+    # end_time: 7.6

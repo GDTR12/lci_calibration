@@ -11,7 +11,8 @@
         "/usr/include/pcl-1.10",
         "${workspaceFolder}/third_party/basalt/include",
         "${workspaceFolder}/third_party/lie_spline/include",
-        "${workspaceFolder}/third_party/ndt_omp/include"
+        "${workspaceFolder}/third_party/ndt_omp/include",
+        "${workspaceFolder}/../../install/velodyne_msgs/include"
       ],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "${default}",

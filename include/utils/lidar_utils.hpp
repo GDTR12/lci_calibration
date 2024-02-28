@@ -11,6 +11,7 @@ namespace lidar_utils
 {
 
 
+
 typedef struct{
     int channels = 16;
     int scan_rate = 10;

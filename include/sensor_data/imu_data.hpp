@@ -4,7 +4,7 @@
 #include <sophus/so3.hpp>
 
 
-namespace lci_cali{
+namespace sensor_data{
 using SO3d = Sophus::SO3<double>;
 using SE3d = Sophus::SE3<double>;
 

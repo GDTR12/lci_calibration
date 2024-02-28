@@ -14,8 +14,7 @@ LCICali::~LCICali()
 }
 
 void LCICali::Initialization(){
-    input = std::make_shared<Input>("Input");
-
+    input.reset(slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance());
 }
 
 

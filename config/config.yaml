@@ -1,17 +1,43 @@
 ndt_resolution: 1
 ndt_planeMinPoints: 5
 ndt_cellMinPoints: 3
-
 ndt_filter: true
-start_iterats: 52
-iterats: 60
+ndt_filter_size: 2
+ndt_show_info: true
 
+ui_normailized: false
+ui_length_orientation: 1
+
+start_iterats: 52
+iterats: 1231123
 reverse: false
+
+interval_time: 0.01
 
 if_mark0: false
 if_mark1: false
-if_mark2: false
+if_mark2: true
 if_mark3: true
 if_mark4: true
 if_mark5: true
 
+length_coord: 500
+sin_value: 20
+iter_times: 1
+acc0: 0
+acc1: 10
+acc2: 0
+
+gyro0: 0
+gyro1: 0
+gyro2: 5
+
+show_process: true
+show_viewer: true
+
+value_rot: 0.0314
+
+if_lci_node_cpp_91: false
+if_lci_node_cpp_106: false
+if_lci_node_cpp_92: false
+if_lci_node_cpp_107: false

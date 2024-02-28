@@ -155,6 +155,10 @@
     "any": "cpp",
     "regex": "cpp",
     "csetjmp": "cpp",
-    "hash_map": "cpp"
+    "hash_map": "cpp",
+    "*.traits": "cpp",
+    "alignedvector3": "cpp",
+    "fft": "cpp",
+    "splines": "cpp"
   }
 }

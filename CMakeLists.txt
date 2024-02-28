@@ -8,12 +8,14 @@ set(CMAKE_CXX_FLAGS "-std=c++17 -O2")   #这里！！！
 # list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # list(APPEND CMAKE_MODULE_PATH "/root/workspace/packages/pcl/install")
 
+
 # 查找XXXConfig.cmake的路径添加
-list(APPEND CMAKE_PREFIX_PATH "/root/workspace/packages/ndt_omp/install")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ndt_omp")
 # list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 set(KONTIKI_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/Kontiki/include")
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fopenmp")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
 message("${KONTIKI_INCLUDE} ===============")
@@ -69,10 +71,12 @@ list(REMOVE_ITEM LIBRARY_SRCS ${TEST_SRCS})
 # list(REMOVE_ITEM LIBRARY_SRCS ${THIRD_PARTY_SRCS})
 
 message("LIBRARY_SRCS: ${LIBRARY_SRCS}")
-
+message("NDT_OMP_LINK_PATH ${NDT_OMP_LINK_PATH}")
+message("PCL_LIBRARY_DIRS ${PCL_LIBRARY_DIRS}")
 set(INCLUDE_PATH "./include")
-add_executable(lci_calibration ${LIBRARY_SRCS} ${NODE_SRCS})
-target_include_directories(lci_calibration PUBLIC 
+
+
+set(MY_PROJECT_INCLUDE  
   ${INCLUDE_PATH} 
   ${KONTIKI_INCLUDE} 
   ${CERES_INCLUDE_DIRS} 
@@ -82,30 +86,23 @@ target_include_directories(lci_calibration PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-message("NDT_OMP_LINK_PATH ${NDT_OMP_LINK_PATH}")
-message("PCL_LIBRARY_DIRS ${PCL_LIBRARY_DIRS}")
-target_link_directories(lci_calibration PUBLIC
+
+set(MY_PROJECT_LIBS_INCLUDE
   ${NDT_OMP_LINK_PATH}
   ${PCL_LIBRARY_DIRS}
 )
 
+set(MY_PROJECT_LIBS
+  ${CERES_LIBRARIES} 
+  ${PCL_LIBRARIES}
+  ceres 
+  fmt
+  ${Pangolin_LIBRARY}
+  ndt_omp
+  yaml-cpp
+)
 
-# target_include_directories(lci_calibration PUBLIC 
-#     ${KONTIKI_INCLUDE})
-target_link_libraries(lci_calibration
-    ${CERES_LIBRARIES} 
-    ${PCL_LIBRARIES}
-    ceres 
-    fmt
-    ${Pangolin_LIBRARY}
-    ndt_omp
-    yaml-cpp
-    )
-
-
-
-ament_target_dependencies(
-  lci_calibration
+set(AMENT_TARGET_DEPS
   "rclcpp"
   "geometry_msgs"
   "visualization_msgs"
@@ -115,17 +112,27 @@ ament_target_dependencies(
   "tf2_ros"
   "PCL"
   "pcl_conversions"
+
 )
 
+foreach(NODE_PATH ${NODE_SRCS})
+  # message("node path:  ${NODE_PATH}")
+  get_filename_component(NODE_FILE ${NODE_PATH} NAME_WE)
+  # message("node file:  ${NODE_FILE}")
+  add_executable(${NODE_FILE} ${LIBRARY_SRCS} ${NODE_PATH})
+  target_include_directories(${NODE_FILE} PUBLIC ${MY_PROJECT_INCLUDE})
+  target_link_directories(${NODE_FILE} PUBLIC ${MY_PROJECT_LIBS_INCLUDE})
+  target_link_libraries(${NODE_FILE} ${MY_PROJECT_LIBS})
+  ament_target_dependencies(${NODE_FILE} ${AMENT_TARGET_DEPS})
+
+  target_compile_features(${NODE_FILE} PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+  install(TARGETS ${NODE_FILE} 
+    DESTINATION lib/${PROJECT_NAME}) 
+
+endforeach()
 
 
 
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fopenmp")
-target_compile_features(lci_calibration PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-
-install(TARGETS lci_calibration 
-  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch urdf config rviz DESTINATION share/${PROJECT_NAME})
 

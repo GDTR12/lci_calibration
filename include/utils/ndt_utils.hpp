@@ -13,7 +13,7 @@
 #include <thread>
 #include "eigen_utils.hpp"
 #include "config_yaml.h"
-namespace ndt_utils{
+namespace slam_utils{
 
 
 
@@ -35,18 +35,17 @@ public:
         num_threads(num_threads), enable_filter(enable_filter)
     {
         ndt = typename Ndt::Ptr(new Ndt());
-        ndt->setResolution(yaml.cfg_root["ndt_resolution"].as<float>());
+        ndt->setResolution(CFG_GET_FLOAT("ndt_resolution"));
         ndt->setStepSize(0.1);
         ndt->setTransformationEpsilon(0.01);
         ndt->setMaximumIterations(30);
         ndt->setNumThreads(num_threads);
         ndt->setNeighborhoodSearchMethod(pclomp::DIRECT7);
-        filter.setLeafSize(2,2,2);
+        float filter_size = CFG_GET_FLOAT("ndt_filter_size");
+        filter.setLeafSize(filter_size,filter_size,filter_size);
     }
 
-    void beginOdometry(){
-        
-    }
+
     /**
      * 返回时间[ms]
      */
@@ -63,20 +62,13 @@ public:
         clock_gettime(CLOCK_MONOTONIC, &start);
         double start_ms = start.tv_sec * 1000 + start.tv_nsec / 1e6;
 
-        auto begin_opt = Eigen::Matrix4f::Identity();
-        // if(result == nullptr){
-        //     result = pcl::make_shared<TargetType>();
-        // }
-        if(enable_filter){
-            // typename TargetType::Ptr filtered_target(new TargetType());
-            typename TargetType::Ptr filtered_source(new SourceType());
+        auto begin_opt = mat;
 
-            // filter.setInputCloud(target);
-            // filter.filter(*filtered_target);
+        if(enable_filter){
+            typename TargetType::Ptr filtered_source(new SourceType());
             filter.setInputCloud(source);
             filter.filter(*filtered_source);
             ndt->setInputSource(filtered_source);
-            // ndt->setInputTarget(filtered_target);
             ndt->setInputTarget(target);
             ndt->align(*result, begin_opt);
             mat = ndt->getFinalTransformation();
@@ -84,19 +76,59 @@ public:
             ndt->setInputSource(source);
             ndt->setInputTarget(target);
             ndt->align(*result, begin_opt);
-
             mat = ndt->getFinalTransformation();
         }
-
+        if(CFG_GET_BOOL("ndt_show_info")){
+            std::cout << "score:" << ndt->getFitnessScore() << "  "
+                << "iterator times: " << ndt->getFinalNumIteration() << std::endl;
+        }
         struct timespec end;
         clock_gettime(CLOCK_MONOTONIC, &end);
         double end_ms = end.tv_sec * 1000 + end.tv_nsec / 1e6;
         return (end_ms - start_ms);
     }
 
-    std::vector<Eigen::Matrix4f> getNdtOdometry(){
+    double alignFrameMap(typename SourceType::Ptr& frame, 
+                 typename TargetType::Ptr& map, 
+                 Eigen::Matrix4f& mat = Eigen::Matrix4f::Identity(), 
+                 typename SourceType::Ptr result = pcl::make_shared<SourceType>())
+    {
+        assert(frame->points.size() > 0);
+        assert(map->points.size() > 0);
 
+        struct timespec start;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        double start_ms = start.tv_sec * 1000 + start.tv_nsec / 1e6;
+
+        auto begin_opt = mat;
+        typename TargetType::Ptr filtered_map(new SourceType());
+        filter.setInputCloud(map);
+        filter.filter(*filtered_map);
+
+        if(enable_filter){
+            typename TargetType::Ptr filtered_frame(new SourceType());
+            filter.setInputCloud(frame);
+            filter.filter(*filtered_frame);
+            ndt->setInputSource(filtered_frame);
+            ndt->setInputTarget(filtered_map);
+            ndt->align(*result, begin_opt);
+            mat = ndt->getFinalTransformation();
+        }else{
+            ndt->setInputSource(frame);
+            ndt->setInputTarget(filtered_map);
+            ndt->align(*result, begin_opt);
+            mat = ndt->getFinalTransformation();
+        }
+        if(CFG_GET_BOOL("ndt_show_info")){
+            std::cout << "score:" << ndt->getFitnessScore() << "  "
+                << "iterator times: " << ndt->getFinalNumIteration() << std::endl;
+        }
+        struct timespec end;
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        double end_ms = end.tv_sec * 1000 + end.tv_nsec / 1e6;
+        return (end_ms - start_ms);
     }
+
     void ndtSurferMap(std::vector<std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, Eigen::Matrix<double, 4, 1>>>& surfelmaps,
                       pcl::PointCloud<pcl::PointXYZ>::Ptr target,
                       double lambda)
@@ -115,7 +147,6 @@ public:
             if (!fitPlane(pl, plane_coffe, plane_point_indices))
                 continue;
             pcl::copyPointCloud(*pl, plane_point_indices, *plane);
-
             surfelmaps.push_back({plane, plane_coffe});
 
         }

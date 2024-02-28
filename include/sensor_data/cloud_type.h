@@ -44,7 +44,11 @@ struct PointXYZIRT {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
 } EIGEN_ALIGN16;
 
-
+struct PointXYZI {
+  PCL_ADD_POINT4D;                 // quad-word XYZ
+  float intensity;                 ///< laser intensity reading
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
+} EIGEN_ALIGN16;
 
 
 
@@ -75,6 +79,13 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZIRT,     //
                                   (float, time, time)            //
 )
 
+POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZI,     //
+                                  (float, x, x)                  //
+                                  (float, y, y)                  //
+                                  (float, z, z)                  //
+                                  (float, intensity, intensity)  //
+)
+
 
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_pcl::PointXYZT,        //
@@ -98,7 +109,7 @@ namespace lslidar{
 struct PointXYZIRT {
   PCL_ADD_POINT4D;                 // quad-word XYZ
   float intensity;                 ///< laser intensity reading
-  uint16_t ring;
+  std::uint16_t ring;
   double time;                      ///< laser time reading
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
 } EIGEN_ALIGN16;
@@ -110,7 +121,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(lslidar::PointXYZIRT,     //
                                   (float, y, y)                  //
                                   (float, z, z)                  //
                                   (float, intensity, intensity)  //
-                                  (uint16_t, ring, ring)
+                                  (std::uint16_t, ring, ring)
                                   (double, time, time)            //
 )
 
@@ -118,8 +129,10 @@ typedef velodyne_pcl::PointXYZIRT RTPoint;
 typedef pcl::PointCloud<RTPoint> RTPointCloud;
 
 typedef lslidar::PointXYZIRT PointIRT;
-typedef pcl::PointCloud<PointIRT> Pcl_IRT;
+typedef pcl::PointCloud<PointIRT> PointCloudIRT;
 
+typedef velodyne_pcl::PointXYZI PointI;
+typedef pcl::PointCloud<PointI> PointCloudI;
 
 typedef velodyne_pcl::PointXYZT PosPoint;
 typedef pcl::PointCloud<PosPoint> PosCloud;
