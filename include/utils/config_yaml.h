@@ -10,12 +10,16 @@
 // #define CFG_LINE() std::cout << "[" << __FILE__ << "]" << "[" << __LINE__ << "]"
 
 #define CFG_LINE() _Pragma("message(\"if_\" __FILE__ __LINE__)") 
+#define CFG_RELOAD() YAML::Node ConfigYaml::cfg_root = YAML::LoadFile(ConfigYaml::config_file);
 #define CFG_IF() ConfigYaml::cfgDebugData<bool>(ConfigYaml::configGetName(__FILE__, __LINE__, "if_"))
 #define CFG_INT() ConfigYaml::cfgDebugData<int>(ConfigYaml::configGetName(__FILE__, __LINE__, "int_"))
 #define CFG_FLOAT() ConfigYaml::cfgDebugData<double>(ConfigYaml::configGetName(__FILE__, __LINE__, "float_"))
-#define CFG_GET_INT(str) ConfigYaml::cfg_root[str].as<int>()
-#define CFG_GET_FLOAT(str) ConfigYaml::cfg_root[str].as<double>()
-#define CFG_GET_BOOL(str) ConfigYaml::cfg_root[str].as<bool>()
+// #define CFG_GET_INT(str)  ConfigYaml::cfg_root[str].as<int>()
+// #define CFG_GET_FLOAT(str)  ConfigYaml::cfg_root[str].as<double>()
+// #define CFG_GET_BOOL(str)  ConfigYaml::cfg_root[str].as<bool>()
+#define CFG_GET_INT(str)  ConfigYaml::getValue<int>(str)
+#define CFG_GET_FLOAT(str)  ConfigYaml::getValue<float>(str)
+#define CFG_GET_BOOL(str)  ConfigYaml::getValue<bool>(str)
 
 class ConfigYaml{
 public:
@@ -28,7 +32,13 @@ public:
     ConfigYaml(){
         
     }
-    
+    template<typename T>
+    static T getValue(std::string str){
+        // auto yaml = YAML::LoadFile(config_file);
+        // cfg_root = YAML::LoadFile(config_file);
+        return cfg_root[str].as<T>();
+    }
+
     static std::string configGetName(std::string file, int line, std::string prefix){
         std::string name;
         int idx0 = file.find_last_of('/');

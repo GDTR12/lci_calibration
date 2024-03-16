@@ -1,7 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "pcl/point_cloud.h"
 #include "utils/input.hpp"
-#include "lci_cali/continuous_imu.hpp"
+#include "lci_cali/continuous_se3.hpp"
 #include "utils/config_yaml.h"
 #include "utils/ndt_utils.hpp"
 #include "pcl/visualization/cloud_viewer.h"
@@ -10,40 +10,41 @@
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc,argv);
-    
     using PointT = pcl::PointXYZ;
-    std::shared_ptr<slam_utils::Input<sensor_data::LidarData<PointT>>> input(slam_utils::Input<sensor_data::LidarData<PointT>>::createInstance());
-    // std::shared_ptr<sensor_data::VLP16Input::Input> input(sensor_data::VLP16Input::createInstance());
-    auto imu_data = input->getIMUData();
+    // std::shared_ptr<slam_utils::Input<sensor_data::LidarData<PointT>>> input(slam_utils::Input<sensor_data::LidarData<PointT>>::createInstance());
+    std::shared_ptr<sensor_data::VLP16Input::Input> input(sensor_data::VLP16Input::createInstance());
+    auto imu_data = *(input->getIMUData());
+    auto lidar_data = *(input->getLidarData());
     double time_end = input->getEndTime();
     const int degree = 4;
     double time_interval = CFG_GET_FLOAT("interval_time");
-    lci_cali::BSplineIMU<4> spline(0, time_end, time_interval);
-
-    // if(CFG_IF()){
-    // for(double i = 0.005; i < time_end; i +=  0.01){
-    //     sensor_data::IMUData data;
-    //     data.timestamp = i;
-    //     if(CFG_IF()){
-    //     data.gyro << 0, 0.01 * i, 0.01 * i ;
-    //     }
-
-    //     if(CFG_IF()){
-    //     data.accel << 0, 0.0 * i, 0.01 * i;
-    //     }
-    //     spline.AddImuMeasurement(data);     
-    // }
-    // }else{
-    // for(auto& data : imu_data){
-    //     if(CFG_IF()){
-    //     spline.AddGyroMeasurement(data);
-    //     }else{
-    //         std::cout << data.accel.x() << " " << data.accel.y() << " " <<  data.accel.z() << " " << data.gyro.x() << " "  << data.gyro.y() << " "  << data.gyro.z() << " "  << std::endl;
-    //         spline.AddImuMeasurement(data);
-    //     }
-    //     // RCLCPP_INFO(rclcpp::get_logger("main"), "imu: %6f, %6f, %6f", data.accel.x(), data.accel.y(), data.accel.z());
-    // }
-    // }
+    lci_cali::BSplineSE3<4> spline(0, time_end, time_interval);
+    auto trajectry = std::make_shared<slam_utils::Trajectory>();
+    auto trajectry1 = std::make_shared<slam_utils::Trajectory>();
+    if(CFG_GET_BOOL("use_sim")){
+        for(double i = 0.005; i < time_end; i +=  0.01){
+            sensor_data::IMUData data;
+            data.timestamp = i;
+            data.accel << CFG_GET_FLOAT("acc0"), CFG_GET_FLOAT("acc1"), CFG_GET_FLOAT("acc2");
+            data.gyro <<CFG_GET_FLOAT("gyro0"), CFG_GET_FLOAT("gyro1"), CFG_GET_FLOAT("gyro2");;
+            if(CFG_GET_BOOL("use_gyro")){
+                spline.addIMUGyroMeasurement(data.timestamp, data.gyro, false);
+            }else{
+                spline.AddImuMeasurement(data);
+            }
+        }
+    }else{
+        for(auto& data : imu_data){
+            if(CFG_GET_BOOL("use_gyro")){
+                std::cout << "gyro" << data.gyro.transpose() << std::endl;
+                spline.addIMUGyroMeasurement(data.timestamp, data.gyro, false);
+            }else{
+                std::cout << data.accel.x() << " " << data.accel.y() << " " <<  data.accel.z() << " " << data.gyro.x() << " "  << data.gyro.y() << " "  << data.gyro.z() << " "  << std::endl;
+                spline.AddImuMeasurement(data);
+            }
+            // RCLCPP_INFO(rclcpp::get_logger("main"), "imu: %6f, %6f, %6f", data.accel.x(), data.accel.y(), data.accel.z());
+        }
+    }
 
     /*
         测试单纯的位置和旋转优化
@@ -58,24 +59,20 @@ int main(int argc, char* argv[])
     //     spline.addLidarOrientationMeasurement(i, so3.log());
     // }
 
-    std::vector<Eigen::Isometry3d,Eigen::aligned_allocator<Eigen::Isometry3d>> trajectry;
 
-    slam_utils::NdtOmpUtils<PointT, PointT> util(12, CFG_GET_BOOL("ndt_filter"));
-    pcl::visualization::PCLVisualizer viewer ("Simple Cloud Viewer");
+    slam_utils::NdtOmpUtils util(12, CFG_GET_BOOL("ndt_filter"));
     pcl::shared_ptr<pcl::PointCloud<PointT>> map = pcl::make_shared<pcl::PointCloud<PointT>>();
-    auto lidar_data = input->getLidarData();
-    *map += *(lidar_data.front().data); 
+    pcl::visualization::PCLVisualizer viewer ("Simple Cloud Viewer");
     Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f result = Eigen::Matrix4f::Identity();
     for(int i = CFG_GET_INT("start_iterats"); i < lidar_data.size() - 1; i++){
+        std::cout << "at: " << i << "\t";
         auto pcl_now = lidar_data[i].data;
         auto pcl_next = lidar_data[i + 1].data;
         double cost_ms= 0;
 
-        Eigen::Matrix4f result = Eigen::Matrix4f::Identity();
         cost_ms = util.align(pcl_next, pcl_now, result);
         transform = transform * result;
-        
-        util.alignFrameMap(pcl_next, map, transform);
 
         auto next_transformed = pcl::make_shared<pcl::PointCloud<PointT>>();
         pcl::transformPointCloud(*pcl_next, *next_transformed, transform);
@@ -84,23 +81,43 @@ int main(int argc, char* argv[])
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_red(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_now, 255, 0, 0));
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_green(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_next, 0, 255, 0));
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_blue(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(next_transformed, 0, 0, 255));
-            // viewer.addPointCloud(pcl_now, *color_red, std::string("r%d", i));
-            // viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
+            if(CFG_GET_BOOL("process_detail"))
+            {
+                viewer.addPointCloud(pcl_now, *color_red, std::string("r%d", i));
+                viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
+                viewer.updatePointCloud(pcl_now);
+                viewer.updatePointCloud(pcl_next);
+            }
+
             viewer.addPointCloud(next_transformed, *color_blue,std::string("b%d", i));
-            // viewer.updatePointCloud(pcl_now);
-            // viewer.updatePointCloud(pcl_next);
             viewer.updatePointCloud(next_transformed);
-            
-            std::cout << "at: " << i << std::endl;
+         
             viewer.spin();
         }
 
         if(i == CFG_GET_INT("iterats"))break;
-
         Eigen::Vector3d trans = transform.block<3,1>(0,3).cast<double>();
-        Eigen::Isometry3d tra(transform.block<3,3>(0,0).cast<double>());
-        tra.pretranslate(trans);
-        trajectry.push_back(tra);
+        Sophus::SO3f rot(transform.block<3,3>(0,0));
+        Eigen::Vector3f qua1 = rot.unit_quaternion().vec();
+        
+        Eigen::Isometry3d tra(Eigen::Matrix3d::Identity());
+        tra.pretranslate(qua1.cast<double>());
+        trajectry1->push_back(tra);
+        Sophus::SO3f last_so3((transform * result.inverse()).block<3,3>(0,0));
+        Eigen::Vector3f qua = last_so3.unit_quaternion().vec();
+        // float dis = (rot.log() - last_so3.log()).norm();
+        float dis = (qua1 - qua).norm();
+        std::cout << "dis: " << dis << std::endl;
+
+        // Eigen::Isometry3d tra(transform.block<3,3>(0,0).cast<double>());
+        // tra.pretranslate(trans);
+        // trajectry->push_back(tra);
+        // spline.addLidarPositionMeasurement(lidar_data[i+i].timestamp, trans);
+        // Eigen::Matrix3f mat_ori = transform.block<3,3>(0,0);
+        // Sophus::SO3f ori(mat_ori);
+        // spline.addLidarOrientationMeasurement(lidar_data[i+i].timestamp, ori.log().cast<double>());
+
+        if(i > lidar_data[i + 1].timestamp > time_end)break;
     }
      
     pcl::visualization::PointCloudColorHandlerCustom<PointT>::Ptr color_map(new pcl::visualization::PointCloudColorHandlerCustom<PointT>(map, 100, 100, 100));
@@ -115,32 +132,37 @@ int main(int argc, char* argv[])
     options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     for( int i = 0; i < CFG_GET_INT("iter_times"); i++){
     ceres::Solver::Summary summary = spline.solve(options); //优化信息
-    std::cout <<  summary.BriefReport() << std::endl;
+        std::cout <<  summary.BriefReport() << std::endl;
     }
 
 
-    // for(double t = 0; t < time_end; t += 0.5){
-    //     std::cout << "t: " << t << std::endl;
-    //     Eigen::Vector3d pos = spline.rd_spline->evaluate<0>(t * 1e9);
-    //     // Eigen::Vector3d accel = spline.rd_spline->evaluate<2>(t * 1e9);
-    //     Eigen::Vector3d accel = spline.rd_spline->acceleration(t * 1e9);
-    //     std::cout << "pos: " << pos.x() << " " << pos.y() << " " << pos.z() << std::endl; 
-    //     std::cout << "accel: " << accel.x() << " " << accel.y() << " " << accel.z() << std::endl; 
-    //     Sophus::SO3d::Tangent rot_vel = spline.so3_spline->velocityBody(t * 1e9);
-    //     Sophus::SO3d rot = spline.so3_spline->evaluate(t * 1e9);
-    //     std::cout << rot.matrix() << std::endl;
-    //     std::cout << rot_vel.matrix() << std::endl;
-    // }
+    for(double t = 0; t < time_end; t += 0.5){
+        std::cout << "t: " << t << std::endl;
+        Eigen::Vector3d pos = spline.rd_spline->evaluate<0>(t * 1e9);
+        // Eigen::Vector3d accel = spline.rd_spline->evaluate<2>(t * 1e9);
+        Eigen::Vector3d accel = spline.rd_spline->acceleration(t * 1e9);
+        std::cout << "pos: " << pos.x() << " " << pos.y() << " " << pos.z() << std::endl; 
+        std::cout << "accel: " << accel.x() << " " << accel.y() << " " << accel.z() << std::endl; 
+        Sophus::SO3d::Tangent rot_vel = spline.so3_spline->velocityBody(t * 1e9);
+        Sophus::SO3d rot = spline.so3_spline->evaluate(t * 1e9);
+        std::cout << rot.matrix() << std::endl;
+        std::cout << rot_vel.matrix() << std::endl;
+    }
 
-    // for (double t = 0; t < time_end; t += time_interval){
-    //     Sophus::SO3d rot = spline.so3_spline->evaluate(t * 1e9);
-    //     Eigen::Vector3d pos = spline.rd_spline->evaluate<0>(t * 1e9);
-    //     Eigen::Isometry3d tra(rot.unit_quaternion());
-    //     tra.pretranslate(pos);
-    //     trajectry.push_back(tra);
-    // }
+    for (double t = 0; t < time_end; t += time_interval){
+        Sophus::SO3d rot = spline.so3_spline->evaluate(t * 1e9);
+        Eigen::Vector3d qua = rot.unit_quaternion().vec();
+        Eigen::Vector3d pos = spline.rd_spline->evaluate<0>(t * 1e9);
+        Eigen::Isometry3d tra(Eigen::Quaterniond::Identity());
+        tra.pretranslate(qua);
+        trajectry->push_back(tra);
+    }
     std::cout << "bias:\n" << spline.bia_a.transpose() << "\n" << spline.bia_g.transpose() << "\n" << spline.g.transpose() << std::endl;
-    DrawTrajectory(trajectry);
+    std::vector<slam_utils::TrajectoryPtr> trajectries;
+    if(CFG_GET_BOOL("show_tra0"))trajectries.push_back(trajectry);
+    if(CFG_GET_BOOL("show_tra1"))trajectries.push_back(trajectry1);
+    slam_utils::DrawTrajectories(trajectries, "test");
+
     rclcpp::shutdown();
 }
 
@@ -154,7 +176,7 @@ int main(int argc, char* argv[])
 // {
 //     rclcpp::init(argc, argv);
 //     auto input = slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance();
-//     std::vector<sensor_data::IMUData, Eigen::aligned_allocator<sensor_data::IMUData>>&  imu_data = input->getIMUData();
+//     std::vector<sensor_data::IMUData, Eigen::aligned_allocator<sensor_data::IMUData>>&  imu_data = *(input->getIMUData());
 //     // std::vector<sensor_data::IMUData, Eigen::aligned_allocator<sensor_data::IMUData>>  imu_data;
 //     // for(double i = 0; i < 50; i+= 1){
 //     //     sensor_data::IMUData imu;
@@ -176,7 +198,7 @@ int main(int argc, char* argv[])
 //         tra.pretranslate(pos);
 //         trajectry.push_back(tra);
 //     }
-//     DrawTrajectory(trajectry);
+//     slam_utils::DrawTrajectory(trajectry);
 //     rclcpp::shutdown();
 //     return 0;
 // }

@@ -84,7 +84,7 @@
 // int main(int argc, char* argv[])
 // {
 //     rclcpp::init(argc,argv);
-//     // lidar_utils::LidarUtils<PointIRT> util;
+//     // slam_utils::LidarUtils<PointIRT> util;
 //     slam_utils::Input<sensor_data::LidarData<PointIRT>> input("input");
 //     auto lidar = input.getLidarData();
 //     // for(auto& data: lidar){
@@ -244,26 +244,25 @@ void viewData(std::vector<sensor_data::LidarData<PointIRT>>& lidar_data){
 int main(int argc, char const *argv[])
 {
     rclcpp::init(argc,argv);
-    // NdtOmpUtils<lslidar::PointXYZIRT, lslidar::PointXYZIRT> util;
+    // NdtOmpUtils util;
     ConfigYaml config;
 
-    slam_utils::NdtOmpUtils<pcl::PointXYZ, pcl::PointXYZ> util(12, CFG_GET_BOOL("ndt_filter"));
-
-    // std::shared_ptr<slam_utils::Input<sensor_data::LidarData<PointIRT>>> input(slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance());
-    auto input = slam_utils::Input<sensor_data::LidarData<PointI>>::createInstance();
-    auto lidar_data = input->getLidarData();
+    using PointT = pcl::PointXYZ;
+    slam_utils::NdtOmpUtils util(12, CFG_GET_BOOL("ndt_filter"));
+    auto input(slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance());
+    // auto input = slam_utils::Input<sensor_data::LidarData<PointT>>::createInstance();
+    auto lidar_data = *(input->getLidarData());
     auto front_ = lidar_data.front();
     // std::cout << front_
-    for(auto& p : front_.data->points){
-        // RCLCPP_INFO(rclcpp::get_logger("main"), "(%f, %f, %f) (i,r,t)(%f, %d, %f)", p.x, p.y, p.z, p.intensity, p.ring, p.time);
-    }
+
     // viewData(lidar_data);
     pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> map = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    // pcl::fromROSMsg(*lidar_data[0].raw_data, *map);
     pcl::visualization::PCLVisualizer viewer ("Simple Cloud Viewer");
+    // pcl::fromROSMsg(*lidar_data[0].raw_data, *map);
     Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+
+    Eigen::Matrix4f result = Eigen::Matrix4f::Identity();
     for(int i = CFG_GET_INT("start_iterats"); i < lidar_data.size() - 1; i++) {
-        Eigen::Matrix4f result;
         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_next = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> pcl_now = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
         // pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> res = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -271,19 +270,12 @@ int main(int argc, char const *argv[])
         pcl::fromROSMsg(*lidar_data[i+1].raw_data, *pcl_next);
         
         double cost_ms;
-        if(CFG_GET_BOOL("reverse")){
-             cost_ms = util.align(pcl_now, pcl_next, result);
-        }else{
-             cost_ms = util.align(pcl_next, pcl_now, result);
-        }
+        cost_ms = util.align(pcl_next, pcl_now, result);
         transform = transform * result;
         pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> next_transformed = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
 
-        if(CFG_GET_BOOL("if_mark4")){
-            pcl::transformPointCloud(*pcl_next, *next_transformed, transform);
-        }else{
-            pcl::transformPointCloud(*pcl_next, *next_transformed, result);
-        }
+        pcl::transformPointCloud(*pcl_next, *next_transformed, transform);
+
         std::cout << result << std::endl;
         std::cout << next_transformed->points.size() << std::endl;
         (*map) += (*next_transformed);
@@ -299,11 +291,15 @@ int main(int argc, char const *argv[])
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_green(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(pcl_next, 0, 255, 0));
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>::Ptr color_blue(new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>(ptr_transformed, 0, 0, 255));
             viewer.addPointCloud(pcl_now, *color_red, std::string("r%d", i));
-            viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
-            viewer.addPointCloud(ptr_transformed, *color_blue,std::string("b%d", i));
+            // viewer.addPointCloud(pcl_next, *color_green, std::string("g%d", i));
+            // viewer.addPointCloud(ptr_transformed, *color_blue,std::string("b%d", i));
             viewer.updatePointCloud(pcl_now);
-            viewer.updatePointCloud(pcl_next);
-            viewer.updatePointCloud(ptr_transformed);
+            // viewer.updatePointCloud(pcl_next);
+            // viewer.updatePointCloud(ptr_transformed);
+
+            for (int i = 0; i < pcl_now->points.size(); i++){
+                printf("(%f, %f, %f) ", pcl_now->points[i].x, pcl_now->points[i].y, pcl_now->points[i].z);
+            }
             std::cout << "at: " << i << std::endl;
             viewer.spin();
         }
@@ -311,9 +307,7 @@ int main(int argc, char const *argv[])
         std::cout << cost_ms << " " << std::endl;
         if(i == CFG_GET_INT("iterats"))break;
     }
-    if(CFG_GET_BOOL("if_mark1")){
-        viewer.spin();
-    }
+
     //该注册函数在渲染输出时每次都调用
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     if(CFG_GET_BOOL("if_mark0")) {
@@ -493,7 +487,7 @@ int main(int argc, char const *argv[])
 //     ConfigYaml config;
 
 //     std::shared_ptr<slam_utils::Input<sensor_data::LidarData<PointIRT>>> input = std::make_shared<slam_utils::Input<sensor_data::LidarData<PointIRT>>>("input");
-//     auto lidar_data = input->getLidarData();
+//     auto lidar_data = *(input->getLidarData());
 
         
 

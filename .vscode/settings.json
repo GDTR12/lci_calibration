@@ -48,7 +48,7 @@
     "**/.*",
     "**/.*/**",
     "**/.vscode",
-    "**/.vscode/**"
+    "**/.vscode/**",
   ],
   "C_Cpp_Runner.useAddressSanitizer": false,
   "C_Cpp_Runner.useUndefinedSanitizer": false,
@@ -62,7 +62,8 @@
     "**/*.code-search": true,
     "**/build": true,
     "**/cmake": true,
-    "**/log": true
+    "**/log": true,
+    "third_party": true
   },
   "files.exclude": {
     "**/.git": true,
@@ -159,6 +160,17 @@
     "*.traits": "cpp",
     "alignedvector3": "cpp",
     "fft": "cpp",
-    "splines": "cpp"
+    "splines": "cpp",
+    "mprealsupport": "cpp",
+    "superlusupport": "cpp",
+    "*.evaluator": "cpp",
+    "adolcforward": "cpp",
+    "autodiff": "cpp",
+    "bvh": "cpp",
+    "eulerangles": "cpp",
+    "kroneckerproduct": "cpp",
+    "numericaldiff": "cpp",
+    "openglsupport": "cpp",
+    "specialfunctions": "cpp"
   }
 }

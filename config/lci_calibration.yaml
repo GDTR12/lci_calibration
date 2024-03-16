@@ -23,13 +23,23 @@ lci_calibration:
     # imu_topic_name: "/imu_sim"
     # time_for_cali: 10.0 # [s] float
 
-    bag_file: "/root/workspace/data/calibration/lidar_imu/lidar_imu.db3"
-    lidar_topic_name: "/points_raw"
-    camera_topic_name: ""
-    imu_topic_name: "/imu/data"
-    end_time: 57
-    # bag_file: "/root/workspace/data/OA-LICalib/bag/simu_bag/simu_bag.db3"
-    # lidar_topic_name: "/scan_sim"
+    # bag_file: "/root/workspace/data/calibration/lidar_imu/lidar_imu.db3"
+    # lidar_topic_name: "/points_raw"
     # camera_topic_name: ""
-    # imu_topic_name: "/imu_sim"
-    # end_time: 7.6
+    # imu_topic_name: "/imu/data"
+    # input_end_time: 15.0
+    # input_start_time: 0.0
+
+    bag_file: "/root/workspace/data/OA-LICalib/bag/simu_bag/simu_bag.db3"
+    lidar_topic_name: "/scan_sim"
+    camera_topic_name: ""
+    imu_topic_name: "/imu_sim"
+    input_end_time: 2.0
+    input_start_time: 0.0
+
+    # bag_file: "/root/workspace/data/lidar_imu_calibration/Court-01/Court-01.db3"
+    # lidar_topic_name: "/velodyne_packets"
+    # camera_topic_name: ""
+    # imu_topic_name: "/imu1/data"
+    # input_end_time: 31.0
+    # input_start_time: 0.0

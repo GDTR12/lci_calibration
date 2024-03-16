@@ -4,18 +4,19 @@
 namespace lci_cali{
 
 
-LCICali::LCICali(/* args */):rclcpp::Node("Lci_Node")
-{
-    Initialization();
-}
+int iaad = 0;
+// LCICali::LCICali(/* args */):rclcpp::Node("Lci_Node")
+// {
+//     Initialization();
+// }
 
-LCICali::~LCICali()
-{
-}
+// LCICali::~LCICali()
+// {
+// }
 
-void LCICali::Initialization(){
-    input.reset(slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance());
-}
+// void LCICali::Initialization(){
+//     input.reset(slam_utils::Input<sensor_data::LidarData<PointIRT>>::createInstance());
+// }
 
 
 }

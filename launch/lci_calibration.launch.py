@@ -69,12 +69,25 @@ while True:
         print("Wrong option:%d Resume" % n)
     else:
         break
- 
+
+str_info_level = ""
+while True:
+    level = int(input("Info level: Info(1) or Debug(2):"))
+    if(level != 1 and level != 2):
+        print("Wrong option:%d Resume" % level)
+    else:
+        if(level == 1):
+            str_info_level = "info"
+        elif(level == 2):
+            str_info_level = "debug"
+        break
+
+
 
 def generate_launch_description():
     logger = DeclareLaunchArgument(
         "log_level",
-        default_value=["debug"],
+        default_value=[str_info_level],
         description="Logging level",
     )
     config_param = os.path.join(

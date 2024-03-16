@@ -109,17 +109,18 @@ private:
     inline double getExactTime(int dsr, int firing) const {
         return mVLP16TimeBlock[firing][dsr];
     }
-    void unpack_scan(PointCloudI& pc_in, PointCloudT &output) const {
+    void unpack_scan(PointCloudI& pc_in, LidarData<PointIRT>& lidar_data){
         /// point cloud
+        auto& output = *lidar_data.data;
         output.points.clear();
         output.height = pc_in.height;
         output.width = pc_in.width;
         output.is_dense = false;
         output.resize(output.height * output.width);
-
+    
         for (int w = 0; w < pc_in.width; w++) {
         for (int dsr = 0; dsr < pc_in.height; dsr++) {
-            double delta_t = getExactTime(dsr, w);
+            double delta_t =  getExactTime(dsr, w);
 
             PointIRT point;
             // already ros-coordinate: x-right y-front z-up
@@ -128,22 +129,24 @@ private:
             point.z = pc_in.at(w, dsr).z;
             point.intensity = 100;
             point.ring = dsr;
-            point.time = delta_t;
+            point.time = lidar_data.timestamp + delta_t;
 
             output.at(w, scan_mapping_16[dsr]) = point;
         }
         }
-        std::cout << "aaa";
     }
-    VLP16Input(){}
+    VLP16Input(){
+        setParameters();
+    }
+
 public:
 
 
 
 
-    void lidar_data_preprocess(PointCloudI& before, PointCloudT& after) override
+    void lidar_data_preprocess(PointCloudI& before, LidarData<PointIRT>& lidar_data) override
     {
-        unpack_scan(before, after);
+        unpack_scan(before, lidar_data);
     }
 
     static Input* createInstance()

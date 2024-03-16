@@ -22,12 +22,18 @@
 
 #pragma once
 
+#define PCL_NO_PRECOMPILE
+
 #include <pcl/common/common.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/impl/voxel_grid.hpp>
+
 
 typedef pcl::PointXYZI VPoint;
 typedef pcl::PointCloud<VPoint> VPointCloud;
@@ -143,3 +149,7 @@ typedef pcl::PointCloud<OusterPoint> OusterPointCloud;
 
 typedef pcl::PointXYZRGB ColorPoint;
 typedef pcl::PointCloud<ColorPoint> ColorPointCloud;
+
+// PCL_INSTANTIATE(PointIRT, PCL_XYZ_POINT_TYPES)
+// PCL_INSTANTIATE(KdTree, PointIRT);
+// PCL_INSTANTIATE(VoxelGrid, PointIRT);

@@ -1,3 +1,4 @@
+#pragma once
 #include "utils/input.hpp"
 #include "basalt/spline/se3_spline.h"
 #include "ceres/ceres.h"
@@ -368,13 +369,13 @@ void run_calibration() {
     int num_corner = 0;
     int num_frames = 0;
 
-    for (const auto& v : imu_data) {
+    for (const auto& v : *imu_data) {
         if (v.timestamp * 1e9 >= start_t_ns && v.timestamp * 1e9 < end_t_ns) {
         calib_spline.addGyroMeasurement(v.gyro, v.timestamp * 1e9);
         num_gyro++;
         }
     }
-    for (const auto& v : imu_data) {
+    for (const auto& v : *imu_data) {
         if (v.timestamp * 1e9 >= start_t_ns && v.timestamp * 1e9 < end_t_ns) {
         calib_spline.addAccelMeasurement(v.accel, v.timestamp * 1e9);
         num_accel++;

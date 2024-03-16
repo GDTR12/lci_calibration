@@ -1,15 +1,72 @@
-ndt_resolution: 1
-ndt_planeMinPoints: 5
-ndt_cellMinPoints: 3
+ndt_resolution: 0.5
+ndt_filter_size: 0.1
+ndt_epsilon: 0.01
+ndt_step_size: 0.1
+ndt_max_iters: 30
+ndt_show_info: false
 ndt_filter: true
-ndt_filter_size: 2
-ndt_show_info: true
-
+ndt_planeMinPoints: 10
+ndt_cellMinPoints: 30
+ndt_plane_threshold: 0.2
 ui_normailized: false
-ui_length_orientation: 1
+ui_length_orientation: 0.1
+ui_trajectory_show_coord: true
+ui_pcl_point_size: 1
 
-start_iterats: 52
-iterats: 1231123
+init_which_data: 2
+init_show_process: false
+init_show_detail: false
+init_start_iter: 0
+init_end_iter: 123134
+init_show_every_map: false
+init_show_map: true
+init_show_ndt_traj: false
+init_show_spline_traj: true
+init_show_aligned_tra: true
+init_show_spline_init_info: false
+init_print_align_info: false
+
+init_show_spline_lidar: false
+init_show_spline_lidar_info: true
+init_ndt_show_frame_now: false
+
+init_svd_cov: 0.25
+
+refinement_epoch: 10
+refine_show_undistort: false
+refine_show_surfels: true
+refine_cell_size: 0.5
+refine_plane_factor_dis: 0.2
+refine_show_spline_solve_info: true
+refine_ceres_max_iters: 50
+refine_lidar_factor_filter: true
+refine_lidar_filter_size: 0.1
+refine_solve_num_threads: 12
+refine_map_resolution: 0.01
+refine_use_imu: true
+refine_use_plannar: true
+refine_imu_accel_weight: 0.3
+refine_imu_gyro_weight: 0.6
+refine_imu_lidar_weight: 0.1
+
+
+plane_map_show_box: false
+spline_imuaccel_lossfunc_value: 5
+spline_imugyro_lossfunc_value: 5
+
+lidar_spline_show_detail: false
+lidar_spline_plannar_use_loss: true
+lidar_spline_plannar_loss_value: 1
+lidar_spline_gyro_use_loss: false
+lidar_spline_gyro_loss_value: 1
+lidar_spline_accel_use_loss: false
+lidar_spline_accel_loss_value: 2
+
+tmp_interval: 3
+
+
+start_iterats: 0
+iterats: 123123
 reverse: false
 
 interval_time: 0.01
@@ -24,6 +81,7 @@ if_mark5: true
 length_coord: 500
 sin_value: 20
 iter_times: 1
+
 acc0: 0
 acc1: 10
 acc2: 0
@@ -32,12 +90,14 @@ gyro0: 0
 gyro1: 0
 gyro2: 5
 
-show_process: true
+show_process: false 
 show_viewer: true
+show_tra0: true
+show_tra1: true
+process_detail: false
+
+use_sim: false
+use_gyro: true
 
 value_rot: 0.0314
 
-if_lci_node_cpp_91: false
-if_lci_node_cpp_106: false
-if_lci_node_cpp_92: false
-if_lci_node_cpp_107: false

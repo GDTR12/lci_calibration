@@ -1,13 +1,13 @@
 #pragma once
 
+#include "sensor_data/cloud_type.h"
 #include "pcl/point_cloud.h"
 #include "ikd-tree/ikd_Tree.h"
 #include "pangolin/pangolin.h"
 #include "pcl/common/geometry.h"
 #include "pclomp/ndt_omp.h"
 
-
-namespace lidar_utils
+namespace slam_utils
 {
 
 
@@ -195,12 +195,44 @@ public:
     
 
 
+
 };
 
 
 
 
+template <typename PointT>
+void pclCopyToXYZ(const pcl::PointCloud<PointT>& pcl, pcl::PointCloud<pcl::PointXYZ>& out)
+{
+    out.points.clear();
+    out.height = pcl.height;
+    out.width = pcl.width;
+    out.is_dense = pcl.is_dense;
+    out.resize(pcl.width * pcl.height);
+    if(pcl.height > 1){
+        for(int i = 0; i < pcl.width; i++){
+            for(int j = 0; j < pcl.height; j++)
+            {
+                pcl::PointXYZ p;
+                p.x = pcl.at(i,j).x;
+                p.y = pcl.at(i,j).y;
+                p.z = pcl.at(i,j).z;
+                out.at(i,j) = p;
+            }
+        }
+    }else{
+        for(int i = 0; i < pcl.size(); i++)
+        {
+                pcl::PointXYZ p;
+                p.x = pcl.at(i).x;
+                p.y = pcl.at(i).y;
+                p.z = pcl.at(i).z;
+                out.at(i) = p;
+        }
+    }
 
+
+}
 
 
    
