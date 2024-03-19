@@ -34,7 +34,7 @@ lci_calibration:
     lidar_topic_name: "/scan_sim"
     camera_topic_name: ""
     imu_topic_name: "/imu_sim"
-    input_end_time: 2.0
+    input_end_time: 7.0
     input_start_time: 0.0
 
     # bag_file: "/root/workspace/data/lidar_imu_calibration/Court-01/Court-01.db3"

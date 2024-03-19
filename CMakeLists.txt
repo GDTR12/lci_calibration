@@ -55,7 +55,7 @@ find_package(Ceres REQUIRED)
 
 
 
-file(GLOB_RECURSE LIBRARY_SRCS "./*.cpp")
+file(GLOB_RECURSE LIBRARY_SRCS "./*.c*")
 file(GLOB_RECURSE NODE_SRCS "./src/app/*_node.cpp")
 file(GLOB_RECURSE TEST_SRCS "./test/*.cpp")
 # file(GLOB_RECURSE THIRD_PARTY_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/*.cpp")

@@ -165,12 +165,12 @@ public:
 
     void ndtSurferMap(std::vector<std::pair<PointCloudT::Ptr, Eigen::Matrix<double, 4, 1>>>& surfelmaps,
                       PointCloudT::Ptr target,
-                      double lambda)
+                      double lambda, int cell_minPoints, int plane_minPoints)
     {
         ndt->setInputTarget(target);
         for(const auto& leaf_ : ndt->getTargetCells().getLeaves()){
             auto leaf = leaf_.second;
-            if (leaf.nr_points < CFG_GET_INT("ndt_cellMinPoints")) continue;
+            if (leaf.nr_points < cell_minPoints) continue;
             int plane_type = checkPlane(leaf.getEvals(), leaf.getEvecs(), lambda);
             if (plane_type < 0) continue;
             
@@ -179,7 +179,7 @@ public:
             pcl::PointIndices plane_point_indices;
             auto pl = leaf.pointList_.makeShared();
 
-            if (!fitPlane(pl, plane_coffe, plane_point_indices))
+            if (!fitPlane(pl, plane_coffe, plane_point_indices, plane_minPoints))
                 continue;
             pcl::copyPointCloud(*pl, plane_point_indices, *plane);
             surfelmaps.push_back({plane, plane_coffe});
@@ -205,7 +205,7 @@ public:
 
     void ndtSurferMap(slam_utils::PlaneMap<PointT>& surfel,
                       typename PointCloudT::Ptr target,
-                      double lambda)
+                      double lambda, int cell_minPoints, int plane_minPoints)
     {
         ndt->setInputTarget(target);
         auto pcl_centers = ndt->getTargetCells().getCentroids();
@@ -214,7 +214,7 @@ public:
 
         for(const auto& leaf_ : ndt->getTargetCells().getLeaves()){
             auto leaf = leaf_.second;
-            if (leaf.nr_points < CFG_GET_INT("ndt_cellMinPoints")) continue;
+            if (leaf.nr_points < cell_minPoints) continue;
             int plane_type = checkPlane(leaf.getEvals(), leaf.getEvecs(), lambda);
             if (plane_type < 0) continue;
             
@@ -222,7 +222,7 @@ public:
             Eigen::Matrix<double, 4, 1> plane_coffe;
             pcl::PointIndices plane_point_indices;
             auto pl = leaf.pointList_.makeShared();
-            if (!fitPlane(pl, plane_coffe, plane_point_indices))continue;
+            if (!fitPlane(pl, plane_coffe, plane_point_indices, plane_minPoints))continue;
 
             auto p = leaf.centroid;
             auto idx = ndt->getTargetCells().getGridCoordinates(p.x(), p.y(), p.z());
@@ -265,7 +265,7 @@ public:
 
     bool fitPlane(const PointCloudT::Ptr& cloud, 
                   Eigen::Matrix<double, 4, 1>& result,
-                  pcl::PointIndices& indices_inline){
+                  pcl::PointIndices& indices_inline, int min_points_in_plane){
         pcl::SACSegmentation<pcl::PointXYZ> seg;
         pcl::ModelCoefficients plane_coffs; // 法向量的: x, y, z, distance
 
@@ -274,11 +274,12 @@ public:
         // 固定参数
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
+        // seg.setDistanceThreshold(CFG_GET_FLOAT("ndt_plane_threshold"));
         seg.setDistanceThreshold(CFG_GET_FLOAT("ndt_plane_threshold"));
-
+// 
         seg.setInputCloud(cloud);
         seg.segment(indices_inline, plane_coffs);
-        if (indices_inline.indices.size() < CFG_GET_INT("ndt_planeMinPoints")) {
+        if (indices_inline.indices.size() < min_points_in_plane) {
             return false;
         }
         for (int i = 0; i < 4; i++) {

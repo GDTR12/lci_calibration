@@ -102,4 +102,7 @@ Eigen::Matrix<Scalar, 4, 1> QuaSubtraction(const Eigen::Quaternion<Scalar>& qua0
   return ret;
 }
 
+
+
+
 }  // namespace Eigen

@@ -169,49 +169,7 @@ public:
         RCLCPP_DEBUG(rclcpp::get_logger("SplineIMU"), "Init successful");
     }
 
-    // void addIMUGyroMeasurement(Eigen::)
-
-    // void AddImuMeasurement(sensor_data::IMUData data){
-
-    //     if(data.timestamp < start_time || data.timestamp > end_time) return;
-    //     auto[vec_so3_rd, u] = GetMeasFitKnots(data.timestamp * 1e9);
-
-    //     auto factor = new GyroAccelFactor<N>(data, u, so3_spline->getTimeIntervalNs());
-    //     auto* cost_func = new ceres::DynamicAutoDiffCostFunction<lci_cali::GyroAccelFactor<N>>(factor);
-    //     for(int i = 0; i < N; i++){
-    //         cost_func->AddParameterBlock(4);
-    //     }
-    //     for(int i = 0; i < N; i++){
-    //         cost_func->AddParameterBlock(3);
-    //     }
-    //     cost_func->AddParameterBlock(3);
-    //     cost_func->AddParameterBlock(3);
-    //     cost_func->AddParameterBlock(3);
-    //     vec_so3_rd.push_back(bia_g.data());
-    //     vec_so3_rd.push_back(bia_a.data());
-    //     vec_so3_rd.push_back(g.data());
-    //     cost_func->SetNumResiduals(6);
-    //     problem->AddResidualBlock(cost_func, NULL, vec_so3_rd);
-    //     if(problem->NumParameterBlocks() == 1){
-    //         problem->SetParameterBlockConstant(vec_so3_rd[0]);
-    //         problem->SetParameterBlockConstant(vec_so3_rd[N]);
-    //     }
-        
-    //     for(int i = 0; i < N; i++){
-    //         problem->SetParameterization(vec_so3_rd[i], local_parameterization);
-    //         // problem->SetParameterization(vec_so3_rd[i + N], &);
-    //     } 
-    // }
-
-    // PCL_XYZ global_map;
-    // void AddLidarSurfelMeasurement(sensor_data::LidarData& lidar_data)
-    // {
-    //     typename PCL_XYZ::Ptr pc_now = pcl::make_shared(PCL_XYZ);
-    //     pcl::fromROSMsg(*lidar_data.rawdata, *pc_now);
-        
-        
-    // }
-
+    
 
 
     void addIMUGyroMeasurement(double time_stamp, V3d gyro, bool with_bias){
@@ -235,10 +193,28 @@ public:
         }  
         // problem->set
     }
+    template<typename T>
+    bool pointTransform(const Eigen::Matrix<T, 3, 1>& p, double time_p, Eigen::Matrix<T, 3, 1>& p_dst, double time_dst_frame)
+    {
+        if(time_p > this->end_time || time_p < this->start_time)return false;
+        if(time_dst_frame > this->end_time || time_dst_frame < this->start_time)return false;
 
-    // void lidarSplineAddIMUGyroMeasurement(double time_stamp, Eigen::Vector3d gyro){
-    //     // problem->AddResidualBlock() 
-    // }
+        Sophus::SO3d rot_w_p = this->so3_spline->evaluate(time_p * 1e9);
+        Eigen::Vector3d trans_w_p = this->rd_spline->template evaluate<0>(time_p * 1e9);
+        Sophus::SE3d transform_w_p(rot_w_p, trans_w_p);
+
+        Sophus::SO3d rot_w_dst = this->so3_spline->evaluate(time_dst_frame * 1e9);
+        Eigen::Vector3d trans_w_dst = this->rd_spline->template evaluate<0>(time_dst_frame * 1e9);
+        Sophus::SE3d transform_w_dst(rot_w_dst, trans_w_dst);
+        Sophus::SE3d transform_dst_p =  transform_w_dst.inverse() * transform_w_p;
+
+        Eigen::Matrix<T, 4, 1> p_src; 
+        p_src << p.x(), p.y() , p.z(), 1.0;
+        p_dst = (transform_dst_p.matrix().cast<T>() * p_src).template block<3,1>(0,0);
+        return true;
+    }
+
+
 
     void lockKnots()
     {
@@ -290,6 +266,16 @@ public:
         }
     }
 
+    bool getSE3(double time, Sophus::SE3d& se3)
+    {
+        Sophus::SO3d so3;
+        Sophus::Vector3d rd;
+        auto ret_so3 = getSO3(time, so3);
+        auto ret_rd3 = getRd3(time, rd);
+        se3 = Sophus::SE3d(so3, rd);
+        return ret_so3 && ret_rd3;
+    }
+
 
     void drawSO3(double interval_s)
     {
@@ -332,10 +318,12 @@ public:
         uint64_t s = st_ns / rd_spline->getTimeIntervalNs();
         double u = double(st_ns % rd_spline->getTimeIntervalNs()) / double(rd_spline->getTimeIntervalNs());
         for ( int i = 0; i < N; i++){
-            ret.insert(ret.end(), &knots[7 * (s + i)], &knots[7 * (s + i) + 1]);
+            // ret.insert(ret.end(), &knots[7 * (s + i)], &knots[7 * (s + i) + 1]);
+            ret.push_back(knots[7*(s+i)]);
         }
         for ( int i = 0; i < N; i++){
-            ret.insert(ret.end(), &knots[7 * (s + i) + 4], &knots[7 * (s + i) + 5]);
+            // ret.insert(ret.end(), &knots[7 * (s + i) + 4], &knots[7 * (s + i) + 5]);
+            ret.push_back(knots[7 * (s + i) + 4]);
         }
         return std::pair<std::vector<double*>, double>(ret, u);
     }

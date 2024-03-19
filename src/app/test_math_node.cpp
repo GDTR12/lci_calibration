@@ -163,13 +163,22 @@ int main(int argc, char* argv[]) {
     // Sophus::SE3d se3(Eigen::Quaterniond::UnitRandom(), Sophus::Vector3d(1,2,3));
     // Sophus::SO3d::exp() 
 
-    Eigen::Quaterniond qua(0.993, 0.088, 0.055, 0.057);
-    std::cout << qua.w() << " " << qua.vec().transpose() << std::endl;
-    auto qua_inverse = qua.inverse();
-    double* a = qua.coeffs().data();
-    std::cout << "p: " << qua.coeffs().data() << std::endl;
-    std::cout << qua.w() << " " << qua.vec().transpose() << std::endl;
-    std::cout << qua_inverse.w() << " " << qua_inverse.vec().transpose() << std::endl;
+    Eigen::Quaterniond q_LtoI(0.998837,-0.0094664,-0.017195,-0.0440298);
+    auto q_ItoL = q_LtoI.inverse();
+    Eigen::Vector3d t_IinL(-0.31208,-0.12331,-0.0595447);
+    Eigen::Vector3d t_LinI = -q_LtoI.matrix().transpose() * t_IinL;
+    std::cout << q_ItoL.coeffs().transpose() << std::endl;
+    std::cout << t_LinI.transpose() << std::endl;
+    // Eigen::Quaterniond qua(0.993, 0.088, 0.055, 0.057);
+
+    // std::cout << qua.w() << " " << qua.vec().transpose() << std::endl;
+    // auto qua_inverse = qua.inverse();
+    // double* a = qua.coeffs().data();
+    
+
+    // std::cout << "p: " << qua.coeffs().data() << std::endl;
+    // std::cout << qua.w() << " " << qua.vec().transpose() << std::endl;
+    // std::cout << qua_inverse.w() << " " << qua_inverse.vec().transpose() << std::endl;
     // double* p = qua.coeffs().data();
     // std::cout << p[0] << " " << p[1] << " " <<  p[2] << " " << p[3] << std::endl;
     // std::cout << qua.vec().transpose() << " " << qua.w() << std::endl;

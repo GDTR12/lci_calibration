@@ -47,15 +47,13 @@ struct PlaneMap{
         std::vector<int> idx(1);
         std::vector<float> dis(1);
         kd_tree.nearestKSearch(p, 1, idx, dis);
-        
+        if(dis.front() > dis_threshold) return false;
         PointT& point = center_points.points[idx[0]];
         Eigen::Map<Eigen::Matrix<float, 3,1>> p2vec(&p.x);
         index = center_idx[pcl2String(point)];
         plane = plane_coffes.at(index).block<4,1>(0,1);
-        if(plane.block<3,1>(0,0).dot(p2vec) + plane(3) > dis_threshold){
-            return false;
-        }
-        if(CFG_GET_BOOL("plane_map_show_box"))showBox(index, p);
+
+        // if(CFG_GET_BOOL("plane_map_show_box"))showBox(index, p);
         return true;
     }
 

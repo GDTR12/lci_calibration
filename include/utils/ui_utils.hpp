@@ -43,9 +43,9 @@ void addPcl(pcl::visualization::PCLVisualizer& pcl_viewer,const pcl::PointCloud<
 }
 
 template <typename PointT, typename... Rest>
-void showPcl(const pcl::PointCloud<PointT>& pcl,const pcl::PointCloud<Rest>&... rest)
+void showPcl(const pcl::PointCloud<PointT>& pcl,  const pcl::PointCloud<Rest>&... rest)
 {
-    pcl::visualization::PCLVisualizer pcl_viewer("Show PointCloud");
+    pcl::visualization::PCLVisualizer pcl_viewer("Show Pcd");
     pcl_viewer.removeAllPointClouds();
     pcl_viewer_id = 0;
     addPcl(pcl_viewer, pcl, rest...);

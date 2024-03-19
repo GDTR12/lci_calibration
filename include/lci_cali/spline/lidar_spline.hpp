@@ -45,9 +45,17 @@ struct ImuAccelMeasFactor {
         auto refined_g = refined_gravity(g);
 
         residual =  accel_data.template cast<T>() - bias - q_ItoL.matrix() * (
-            rot.matrix().transpose() * (accel + refined_g) - Sophus::SO3<T>::hat(rot_accel).matrix() * q_ItoL.matrix() * t_ItoL - Sophus::SO3<T>::hat(rot_vel) * Sophus::SO3<T>::hat(rot_vel) * q_ItoL.matrix() * t_ItoL
+            rot.matrix().transpose() * (accel + refined_g) 
+            - Sophus::SO3<T>::hat(rot_accel).matrix() * q_ItoL.matrix().transpose() * t_ItoL 
+            - Sophus::SO3<T>::hat(rot_vel) * Sophus::SO3<T>::hat(rot_vel) * q_ItoL.matrix().transpose() * t_ItoL
         );
+        // residual =  accel_data.template cast<T>() - bias - q_ItoL.matrix() * (
+        //     rot.matrix().transpose() * (accel + refined_g) 
+        //     - Sophus::SO3<T>::hat(rot_accel).matrix() * t_ItoL 
+        //     - Sophus::SO3<T>::hat(rot_vel) * Sophus::SO3<T>::hat(rot_vel) * t_ItoL
+        // );
         residual = T(weight) * residual;
+        
         return true;
     }
     Eigen::Vector3d accel_data;
@@ -58,7 +66,7 @@ struct ImuAccelMeasFactor {
 template<int N>
 struct LidarPlanarFactor {
     LidarPlanarFactor(Eigen::Vector3d data, Eigen::Vector4d surfel, double normalized_time, double interval_ns, double weight):
-        normalized_time(normalized_time),pose(data),plannar(surfel),interval_ns(interval_ns), weight(weight){}
+        normalized_time(normalized_time),pose(data),plannar(surfel),interval_ns(interval_ns), weight_(weight){}
     template <class T>
     bool operator()(T const* const* sKnots, T* r) const{
         using Tangent = typename Sophus::SO3<T>::Tangent;
@@ -70,12 +78,12 @@ struct LidarPlanarFactor {
         basalt::CeresSplineHelper<N>::template evaluate<T, 3, 0>(sKnots + N, normalized_time, double(1e9)/ interval_ns, &trans);
         Tangent p_l0 = rot.matrix() * (pose.template cast<T>()) + trans;
         *r = plannar.block<3,1>(0,0).template cast<T>().dot(p_l0) + (plannar.template cast<T>()[3]);
-        *r = T(weight) * (*r);
+        *r = T(weight_) * (*r);
         return true;
     }
     Eigen::Vector4d plannar;
     double normalized_time;
-    double interval_ns, weight;
+    double interval_ns, weight_;
     Eigen::Vector3d pose;
 };
 extern int iaad;
@@ -184,7 +192,7 @@ public:
         } 
         this->problem->SetParameterization(q_ItoL.coeffs().data(), this->local_parameterization);
         count_imu_gyro_data++;
-        Sophus::SO3d so3d = this->so3_spline->evaluate(time_stamp * 1e9);
+        // Sophus::SO3d so3d = this->so3_spline->evaluate(time_stamp * 1e9);
         // std::cout << "At t: " << time_stamp << " " <<  so3d.unit_quaternion().coeffs().transpose() << std::endl;
 
     }
@@ -262,48 +270,7 @@ public:
         }  
     }
 
-    template<typename PointT = pcl::PointXYZ>
-    void addLidarPlannarMeasurement(double time_stamp, pcl::PointCloud<PointT>& pcd, slam_utils::PlaneMap<PointT>& map){
-        assert(time_stamp >= this->start_time && time_stamp <= this->end_time);
-        auto[vec_so3_rd, u] = this->GetMeasFitKnots(time_stamp * 1e9);
-        const int k = 1;
-        float dis_threshold = CFG_GET_FLOAT("refine_plane_factor_dis");
-        pcl::PointCloud<PointT> cloud;
-        Sophus::SO3d rot = this->so3_spline->evaluate(time_stamp * 1e9);
-        Eigen::Vector3d trans = this->rd_spline->template evaluate<0>(time_stamp * 1e9);
-        for(int i = 0; i < pcd.size(); i++)
-        {
-            PointT point;
-            Eigen::Map<Eigen::Vector3f> p_dst(&point.x);
-            Eigen::Map<Eigen::Vector3f> p_src(&pcd.at(i).x);
-            p_dst = rot.matrix().cast<float>() * p_src + trans.cast<float>();
-            cloud.push_back(point);
-        }
-        for(int i = 0; i < pcd.size(); i++)
-        {
-            Eigen::Vector4f plane_coffe;
-            PointT p = cloud.points.at(i);
-            if(!map.serachNearestPlane(p, dis_threshold, plane_coffe)){
-                continue;
-            }
-        
-            Eigen::Map<Eigen::Vector3f> pos(&p.x);
-            auto factor = new LidarPlanarFactor<N>(pos.cast<double>(), plane_coffe.cast<double>(), u, this->interval * 1e9,  CFG_GET_FLOAT("refine_imu_lidar_weight"));
-            auto* cost_function = new ceres::DynamicAutoDiffCostFunction<LidarPlanarFactor<N>>(factor);
-            for(int i = 0; i < N; i++){
-                cost_function->AddParameterBlock(4);
-            }
-            for(int i = 0; i < N; i++){
-                cost_function->AddParameterBlock(3);
-            }
-            cost_function->SetNumResiduals(1);
-            this->problem->AddResidualBlock(cost_function, NULL, vec_so3_rd);
-            for(int i = 0; i < N; i++){
-                this->problem->SetParameterization(vec_so3_rd[i], this->local_parameterization);
-            }
-            count_lidar_data++;
-        }
-    }
+
     template<typename  PointT = pcl::PointXYZ>
     void addLidarPlannarMeasurement(double time_stamp, PointT& p, slam_utils::PlaneMap<PointT>& map){
         if(!pcl_isfinite(p.x) || !pcl_isfinite(p.y) || !pcl_isfinite(p.z))return;
@@ -320,13 +287,14 @@ public:
         Eigen::Map<Eigen::Vector3f> p_dst(&point.x);
         Eigen::Map<Eigen::Vector3f> p_src(&p.x);
         p_dst = rot.matrix().cast<float>() * p_src + trans.cast<float>();
-
         Eigen::Vector4f plane_coffe;
         int index;
-        if(!map.serachNearestPlane(point, dis_threshold, plane_coffe, index)){
+        if(!map.serachNearestPlane(point, map.resolution * 0.8, plane_coffe, index)){
             return;
         }
-
+        if(plane_coffe.block<3,1>(0,0).dot(p_dst) + plane_coffe(3) > dis_threshold){
+            return;
+        }
         if(CFG_GET_BOOL("lidar_spline_show_detail")){
             std::vector<std::array<int, 3>> color;
             std::vector<float> size;
@@ -376,6 +344,7 @@ public:
             this->problem->SetParameterization(vec_so3_rd[i], this->local_parameterization);
         }
         count_lidar_data++;
+        lidar_cost += std::abs(plane_coffe.block<3,1>(0,0).dot(p_dst) + plane_coffe(3));
     }
 
     
@@ -392,7 +361,7 @@ public:
 
     void printInfo()
     {
-        std::cout << "count_lidar_data: " << count_lidar_data << std::endl;
+        std::cout << "count_lidar_data: " << count_lidar_data << " cost: " << lidar_cost << std::endl;
         std::cout << "count_imu_accel_data: " << count_imu_accel_data << std::endl;
         std::cout << "count_imu_gyro_data: " << count_imu_gyro_data << std::endl;
     }
@@ -402,6 +371,7 @@ public:
 
 private:
     int count_lidar_data = 0, count_imu_gyro_data = 0, count_imu_accel_data = 0;
+    double lidar_cost = 0;
 protected:
 
 };

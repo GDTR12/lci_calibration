@@ -7,6 +7,7 @@
 #include <utils/input.hpp>
 #include <lci_cali/continuous_se3.hpp>
 #include <lci_cali/spline/lidar_spline.hpp>
+#include <lci_cali/spline/imu_spline.hpp>
 #include "sensor_data/lidar_data.h"
 #include "pcl/visualization/cloud_viewer.h"
 #include "utils/ndt_utils.hpp"
@@ -21,6 +22,7 @@ namespace lci_cali{
 
 using namespace sensor_data;
 using namespace slam_utils;
+
 
 
 class LCICali
@@ -53,7 +55,7 @@ private:
     Eigen::Vector3d t_ItoL = Eigen::Vector3d(0,0,0);
     Eigen::Vector3d g = Eigen::Vector3d(0,0,0);
     Eigen::Quaterniond q_ItoL = Eigen::Quaterniond::Identity();
-    std::shared_ptr<BSplineSE3<N>> spline_init;
+    std::shared_ptr<IMUSpline<N>> spline_imu;
     std::shared_ptr<LidarSpline<N>> spline_lidar;
 public:
 
@@ -68,75 +70,91 @@ public:
         imu_data = input->getIMUData();
         time_end = input->getEndTime();
         start_time = input->getStartTime();
-        spline_init = std::make_shared<BSplineSE3<N>>(start_time, time_end, interval_s);
+        spline_imu = std::make_shared<IMUSpline<N>>(start_time, time_end, interval_s);
         spline_lidar = std::make_shared<LidarSpline<N>>(start_time, time_end, interval_s);
     }
 
     void run(){
         initExtrinsicParam();
-        // q_ItoL = Eigen::Quaterniond(0.998837, -0.0094664,-0.017195,-0.0440298);
-        pcl::shared_ptr<PointCloudMap> map;
+        // q_ItoL = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
+        auto map  = pcl::make_shared<PointCloudMap>();
+        auto filtered_map = pcl::make_shared<PointCloudMap>();
         int epoch = 0;
-        // auto map = initRebuildMap();
         std::cout << "bias_a: " << bias_a.transpose() << " bias_g: " << bias_g.transpose() << " t: " << t_ItoL.transpose() << std::endl;
         for(int i = 0; i < CFG_GET_INT("refinement_epoch"); i++){
             slam_utils::PlaneMap<PointMap> surfelmaps;
-
+            std::cout << "=======================================" << std::endl;
+            std::cout << "epoch: " << epoch << std::endl;
             if(epoch == 0){
-                map = initRebuildMap();
-                epoch++;
-                continue;
+                filtered_map = initRebuildMap();
             }else{
                 map = pcl::make_shared<PointCloudMap>();
+                filtered_map->clear();
                 lidarDataUndistort(spline_lidar);
                 for (size_t j = 0; j < undistorted_lidar.size(); j++)
                 {
                     auto frame = pcl::make_shared<PointCloudMap>();
                     Sophus::SO3d so3;
                     Eigen::Vector3d rd3;
-                    if(spline_lidar->getSO3(undistorted_lidar.at(j).timestamp, so3) && spline_lidar->getRd3(undistorted_lidar.at(j).timestamp, rd3)){
-                        Sophus::SE3d se3(so3, rd3);
-                        pcl::transformPointCloud(*undistorted_lidar.at(j).data, *frame, se3.matrix().cast<float>());
-                    }
-
-                    // PointCloudMap filtered_map;
+                    if(!spline_lidar->getSO3(undistorted_lidar.at(j).timestamp, so3) || !spline_lidar->getRd3(undistorted_lidar.at(j).timestamp, rd3))
+                        continue;
+                    Sophus::SE3d se3(so3, rd3);
+                    pcl::transformPointCloud(*undistorted_lidar.at(j).data, *frame, se3.matrix().cast<float>());
                     // pcl::VoxelGrid<PointMap> filter;
-                    // filter.setLeafSize(0.3, 0.3, 0.3);
+                    // double map_res = CFG_GET_FLOAT("refine_map_resolution");
+                    // filter.setLeafSize(map_res, map_res, map_res);
                     // filter.setInputCloud(frame);
-                    // filter.filter(filtered_map);
-                    // *map += filtered_map;
-                    *map += *frame;
+                    // filter.filter(*map);
+                    *filtered_map += *frame;
+                    // *map += *frame;
                 }
                 // NdtOdometry ndt_odometry;
                 // std::vector<double> ndt_timestamp;
                 // lidarDataUndistort(spline_lidar);
-                // map = ndtOdometry(undistorted_lidar, ndt_odometry, ndt_timestamp, false);
+                // filtered_map = ndtOdometry(undistorted_lidar, ndt_odometry, ndt_timestamp, false,false);
             }
-            auto filtered_map = pcl::make_shared<PointCloudMap>();
-            pcl::VoxelGrid<PointMap> filter;
-            double map_res = CFG_GET_FLOAT("refine_map_resolution");
-            filter.setLeafSize(map_res, map_res, map_res);
-            filter.setInputCloud(map);
-            filter.filter(*filtered_map);
-
+            
+            std::cout << "show epoch map:" << std::endl;
             showPcl(*filtered_map);
-        
+
             ndtSurferMap(filtered_map, surfelmaps); 
-            addFactor(surfelmaps);
-            if(epoch == 1){
-                spline_lidar->lockParam(q_ItoL.coeffs().data());
-                spline_lidar->lockParam(bias_a.data());
-                spline_lidar->lockParam(bias_g.data());
-            }
+            addFactor(surfelmaps, filtered_map);
+
+            // if(epoch == 0 && CFG_GET_BOOL("refine_use_imu")){
+            //     // spline_lidar->lockParam(q_ItoL.coeffs().data());
+                // spline_lidar->lockParam(bias_a.data());
+                // spline_lidar->lockParam(bias_g.data());
+            //     spline_lidar->lockKnots();
+            // }
             optimize();
             epoch++;
         }
     }
 
-   
+
+    // pcl::shared_ptr<PointCloudMap> ndtOdometryWithIMU(NdtOdometry& odometry, std::vector<double>& time_list)
+    // {
+    //     NdtOmpUtils ndt_odometry(CFG_GET_FLOAT("ndt_resolution"), 
+    //                              CFG_GET_FLOAT("ndt_step_size"), 
+    //                              CFG_GET_FLOAT("ndt_epsilon"), 
+    //                              CFG_GET_INT("ndt_max_iters"), 
+    //                              CFG_GET_FLOAT("ndt_filter_size"));   
+    //     pcl::shared_ptr<PointCloudMap> map = pcl::make_shared<PointCloudMap>();
+    //     Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+    //     odometry.push_back(transform);
+    //     time_list.push_back(lidar_data.front().timestamp);
+        
+    //     // Eigen::Quaterniond q_L1toL2 = q_ItoL.inverse() * 
+
+    // }
     // TODO:将其重构到 ndtutil
     template<typename PointT>
-    pcl::shared_ptr<PointCloudMap> ndtOdometry(std::vector<LidarData<PointT>>& lidar_data,NdtOdometry& odometry, std::vector<double>& time_list, bool use_raw){
+    pcl::shared_ptr<PointCloudMap> ndtOdometry(
+                            std::vector<LidarData<PointT>>& lidar_data,
+                            NdtOdometry& odometry, 
+                            std::vector<double>& time_list, 
+                            bool use_raw,
+                            bool use_imu_spline){
         NdtOmpUtils ndt_odometry(CFG_GET_FLOAT("ndt_resolution"), 
                                  CFG_GET_FLOAT("ndt_step_size"), 
                                  CFG_GET_FLOAT("ndt_epsilon"), 
@@ -148,39 +166,49 @@ public:
         time_list.push_back(lidar_data.front().timestamp);
         Eigen::Matrix4f result = Eigen::Matrix4f::Identity();
         for(int i = CFG_GET_INT("init_start_iter"); i < lidar_data.size() - 1; i++){
-            // std::cout << "at: " << i << "\t";
 
             pcl::shared_ptr<PointCloudMap> pcl_now, pcl_next;
             pcl_now = pcl::make_shared<PointCloudMap>();
             pcl_next = pcl::make_shared<PointCloudMap>();
+
+            pcl::VoxelGrid<PointMap> filter;
+            filter.setLeafSize(0.1, 0.1, 0.1);
             if (use_raw){
                 pcl::fromROSMsg(*lidar_data.at(i).raw_data, *pcl_now);
                 pcl::fromROSMsg(*lidar_data.at(i + 1).raw_data, *pcl_next);
             }else{
-                // pcl::copyPointCloud(*lidar_data.at(i).data, *pcl_now);
-                // pcl::copyPointCloud(*lidar_data.at(i+1).data, *pcl_next);
                 slam_utils::pclCopyToXYZ(*lidar_data.at(i).data, *pcl_now);
                 slam_utils::pclCopyToXYZ(*lidar_data.at(i+1).data, *pcl_next);
-                // viewer.addPointCloud(pcl_now, std::string("frame%d", i));
-
-                // viewer.updatePointCloud(pcl_now);
-                // viewer.spin();
-            }
-            if(i == CFG_GET_INT("init_start_iter")) {
-                (*map) += (*pcl_now);
             }
             double cost_ms= 0;
 
-            cost_ms = ndt_odometry.align(pcl_next, pcl_now, result);
-            transform = transform * result;
-            // cost_ms = ndt_odometry.align(pcl_next, map, result);
-            // transform = result;
+            if(use_imu_spline){
+                Sophus::SE3d se3_0, se3_1;
+                Sophus::SE3d se3_ItoL(q_ItoL, t_ItoL);
+                if (spline_imu->getSE3(lidar_data.at(i).timestamp, se3_0) &&
+                    spline_imu->getSE3(lidar_data.at(i+1).timestamp, se3_1)){
+                    auto se3_0to1 = se3_0.inverse() * se3_1;
+                    auto R_L0toL1 = se3_ItoL.inverse() * se3_0to1 * se3_ItoL;
+                    result = R_L0toL1.matrix().cast<float>();
+                }
+            }
+
+            auto next = pcl::make_shared<PointCloudMap>();
+            if(i == CFG_GET_INT("init_start_iter")){
+                filter.setInputCloud(pcl_now);
+                filter.filter(*next);
+                *map += *next;
+                continue;
+            }
+            // cost_ms = ndt_odometry.align(pcl_next, pcl_now, result);
+            // transform = transform * result;
+            cost_ms = ndt_odometry.align(pcl_next, map, result);
+            transform = result;
             odometry.push_back(transform);
             time_list.push_back(lidar_data.at(i+1).timestamp);
-            auto next = pcl::make_shared<PointCloudMap>();
+            
             // PointCloudMap filtered_map;
-            pcl::VoxelGrid<PointMap> filter;
-            filter.setLeafSize(0.1, 0.1, 0.1);
+
             filter.setInputCloud(pcl_next);
             filter.filter(*next);
             auto next_transformed = pcl::make_shared<PointCloudMap>();
@@ -192,7 +220,6 @@ public:
             }
             if(CFG_GET_BOOL("init_show_every_map"))showPcl(*map);
             if(i == CFG_GET_INT("init_end_iter"))break;
-
         }
         return map;
     }
@@ -246,28 +273,17 @@ public:
             Eigen::Quaterniond qua(odometry[i].block<3,3>(0,0).cast<double>().transpose() * odometry[i + 1].block<3,3>(0,0).cast<double>());
             Sophus::SO3d so3_0, so3_1;
             // std::cout <<time_list[i] << " " <<time_list[i+1] << std::endl;
-            if(spline_init->getSO3(time_list[i], so3_0) && spline_init->getSO3(time_list[i+1], so3_1)){
-
+            if(spline_imu->getSO3(time_list[i], so3_0) && spline_imu->getSO3(time_list[i+1], so3_1)){
                 auto so3 = Sophus::SO3d(so3_0.matrix().transpose() * so3_1.matrix());
                 A.block<4, 4>(i * 4, 0) = MathUtils::quaLeftMultiMat(so3.unit_quaternion()) - MathUtils::quaRightMultiMat(qua);
-
-                std::cout << "mark"<< std::to_string(__LINE__) << std::endl;
             }
             if(i < 21 || i % 5 != 0) continue;
-            Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            Eigen::JacobiSVD<Eigen::MatrixXd> svd(A.block(0,0, (i+1)*4, 4), Eigen::ComputeFullU | Eigen::ComputeFullV);
             Eigen::Vector4d result  = svd.matrixV().col(3); // w,x,y,z
-            // q_ItoL = q_ItoL.inverse();
-            // for(int i = 0; i < 10000; i++){
-            //     auto rand_result = Eigen::Vector4d::Random();
-            //     if((A * rand_result).norm() < (A*result).norm()){
-            //         std::cout << "wrong solve" << std::endl;
-            //     }
-            // }
-
-            std::cout << "mark"<< std::to_string(__LINE__) << std::endl;
-
             Eigen::Vector4d cov = svd.singularValues();
+            std::cout << "cov: " << cov.transpose() << std::endl;
             if(cov(2) > CFG_GET_FLOAT("init_svd_cov")){
+                
                 // Eigen用向量初始化四元数时,向量里的循序是(x,y,z,w)
                 q_ItoL = Eigen::Quaterniond(Eigen::Vector4d(result[1], result[2], result[3], result[0]));
                 std::cout << "q (w,x,y,z):" << q_ItoL.w() << " " << q_ItoL.vec().transpose() << std::endl;
@@ -279,19 +295,20 @@ public:
                 continue;
             }
         }
+        // std::cout << A << std::endl;
         return false; 
     }
 
     void initSplineRotate(){
         for(auto& data : *imu_data){
-            spline_init->addIMUGyroMeasurement(data.timestamp, data.gyro, false);
+            spline_imu->addIMUGyroMeasurement(data.timestamp, data.gyro, false);
         }
         ceres::Solver::Options options;
         options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
         options.num_threads = std::thread::hardware_concurrency();
         options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
-        ceres::Solver::Summary summary = spline_init->solve(options);
-        if(CFG_GET_BOOL("init_show_spline_init_info")){
+        ceres::Solver::Summary summary = spline_imu->solve(options);
+        if(CFG_GET_BOOL("init_show_spline_imu_info")){
             std::cout << summary.FullReport() << std::endl;
         }
     }
@@ -303,8 +320,8 @@ public:
     //     for (size_t i = 0; i < odometry.size(); i++)
     //     {
     //         Sophus::SO3d so3;
-    //         if(!spline_init->getSO3(time_list[i], so3)) continue;
-    //         // spline_init->addIMUGyroMeasurement(time_list[i], )
+    //         if(!spline_imu->getSO3(time_list[i], so3)) continue;
+    //         // spline_imu->addIMUGyroMeasurement(time_list[i], )
     //     }
         
     // }
@@ -321,9 +338,9 @@ public:
             tra.pretranslate(transd.vec());
             ndt_trajectory->push_back(tra);
         }
-        for(double t = spline_init->getStartTime_s(); t < spline_init->getEndTime_s(); t += spline_init->getInterval_s()){
+        for(double t = spline_imu->getStartTime_s(); t < spline_imu->getEndTime_s(); t += spline_imu->getInterval_s()){
             Sophus::SO3d rot;
-            if(!spline_init->getSO3(t, rot)){
+            if(!spline_imu->getSO3(t, rot)){
                 continue;
             }
             Eigen::Isometry3d tra(Eigen::Quaterniond::Identity());
@@ -343,7 +360,7 @@ public:
         NdtOdometry ndt_odometry;
         std::vector<double> ndt_timestamp;
 
-        auto map = ndtOdometry(*lidar_data,ndt_odometry, ndt_timestamp, false);
+        auto map = ndtOdometry(*lidar_data,ndt_odometry, ndt_timestamp, false, false);
         if(CFG_GET_BOOL("init_show_map"))showPcl(*map);
 
         if(CFG_GET_BOOL("init_show_ndt_traj")) {
@@ -351,14 +368,14 @@ public:
             drawNdtTrajectory(ndt_odometry);
         }
         initSplineRotate();
-        if(CFG_GET_BOOL("init_show_spline_traj")) spline_init->drawSO3(spline_init->getInterval_s());
+        if(CFG_GET_BOOL("init_show_spline_traj")) spline_imu->drawSO3(spline_imu->getInterval_s());
         if(alignQuantation(ndt_odometry, ndt_timestamp)){
             if(CFG_GET_BOOL("init_show_aligned_tra"))splineAlign(ndt_odometry);
             if(CFG_GET_BOOL("init_print_align_info")){
                 for(int i =0; i< ndt_odometry.size(); i++){
                     Sophus::SO3f so3_ndt(ndt_odometry[i].block<3,3>(0,0));
                     Sophus::SO3d so3_imu;
-                    if(!spline_init->getSO3(ndt_timestamp[i], so3_imu)){
+                    if(!spline_imu->getSO3(ndt_timestamp[i], so3_imu)){
                         continue;
                     }
                     auto qua0 = q_ItoL * so3_ndt.unit_quaternion().cast<double>();
@@ -368,7 +385,7 @@ public:
                 }
             }
         }else{
-            RCLCPP_ERROR(rclcpp::get_logger("init"), "align failed");
+            std::cout << "align failed" << std::endl;
         }
         initLidarSpline(ndt_odometry, ndt_timestamp);
     }
@@ -376,10 +393,50 @@ public:
     pcl::shared_ptr<PointCloudMap> initRebuildMap(){
         NdtOdometry ndt_odometry;
         std::vector<double> ndt_timestamp;
-        lidarDataUndistort(spline_init);
+        lidarDataUndistort(spline_imu);
+        // NdtOmpUtils utils(0.4, 0.1, 0.01, 50, 1);
+        // pcl::shared_ptr<PointCloudMap> map = pcl::make_shared<PointCloudMap>();
+        // spline_lidar->resetProblem();
+        // for(int i = 0; i < lidar_data->size(); i++){
+        //     auto& data = undistorted_lidar.at(i).data;
+        //     auto& data_next = lidar_data->at(i).data;
+        //     PlaneMap<PointMap> surfelmaps;
+        //     utils.ndtSurferMap(surfelmaps, data, 0.6, 20, 10);
+        //     pcl::VoxelGrid<PointT> filter;
+        //     PointCloudT filtered;
+        //     auto size = CFG_GET_FLOAT("refine_lidar_filter_size");
+        //     filter.setLeafSize(size, size, size);
+        //     filter.setInputCloud(data_next);
+        //     filter.filter(filtered);
+        //     for(auto& p : filtered)
+        //     {
+        //         Eigen::Vector3f p_vec;
+        //         spline_lidar->pointTransform<float>(
+        //             Eigen::Map<Eigen::Vector3f>(&p.x), p.time, 
+        //             p_vec, lidar_data->at(i).timestamp);
 
-        auto map = ndtOdometry(undistorted_lidar, ndt_odometry, ndt_timestamp, false);
-        // showPcl(*map)
+        //         PointMap pos(p_vec.x(), p_vec.y(), p_vec.z());
+        //         spline_lidar->addLidarPlannarMeasurement(
+        //             p.time, pos,surfelmaps);
+        //     }
+        // }
+        // // ceres::opt
+        // ceres::Solver::Options options;
+        // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        // options.num_threads = std::thread::hardware_concurrency();
+        // options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+        // ceres::Solver::Summary summary = spline_lidar->solve(options);
+        // for (size_t i = 0; i < undistorted_lidar.size(); i++)
+        // {
+        //     Sophus::SE3d se3;
+        //     auto frame = pcl::make_shared<PointCloudMap>();
+        //     if(!spline_lidar->getSE3(lidar_data->at(i).timestamp, se3))continue;
+        //     pcl::transformPointCloud(*undistorted_lidar.at(i).data, *frame, se3.matrix());
+        //     (*map) += (*frame);
+        // }
+        
+        auto map = ndtOdometry(undistorted_lidar, ndt_odometry, ndt_timestamp, false, false);
+        // *map += *undistorted_lidar.front().data;
         return map;
     }
     template<typename Scalar>
@@ -482,7 +539,7 @@ public:
         //     showPcl(maps);
         // }
         
-        ndt.ndtSurferMap(surfelmaps, map, 0.6);
+        ndt.ndtSurferMap(surfelmaps, map, 0.6, CFG_GET_INT("refine_plane_cellMinPoints"), CFG_GET_INT("refine_plane_planarMinPoints"));
         if(CFG_GET_BOOL("refine_show_surfels")){
             std::vector<typename PointCloudMap::Ptr> maps;
             for(int i = 0; i < surfelmaps.pcls.size(); i++)
@@ -549,25 +606,69 @@ public:
         }
     }
 
-    void addFactor(slam_utils::PlaneMap<PointMap>& surfelmaps)
+    void addFactor(slam_utils::PlaneMap<PointMap>& surfelmaps, typename PointCloudMap::Ptr map)
     {
         spline_lidar->resetProblem();
         if(CFG_GET_BOOL("refine_use_plannar")){
             for(int i = 0; i < lidar_data->size(); i++){
+                
+                std::vector<typename PointCloudMap::Ptr> color_maps;
+                std::vector<float> map_size;
+                color_maps.resize(surfelmaps.pcls.size());
+                std::vector<std::array<int, 3>> color;
+                for (size_t j = 0; j < surfelmaps.pcls.size(); j++)
+                {
+                    color.push_back({(int)(255.0f * rand() / RAND_MAX), 
+                                    (int)(255.0f * rand() / RAND_MAX), 
+                                    (int)(255.0f * rand() / RAND_MAX)});
+                    color_maps.at(j).reset(new PointCloudMap());
+                    color_maps.at(j)->push_back(surfelmaps.center_points.at(j));
+                    map_size.push_back(2);
+                }
+                map_size.push_back(1);
+                color.push_back({100,100,100});
+                
+
                 auto& data = lidar_data->at(i).data;
                 if(CFG_GET_BOOL("refine_lidar_factor_filter")){
-                    pcl::VoxelGrid<PointT> filter;
-                    PointCloudT filtered;
-                    auto size = CFG_GET_FLOAT("refine_lidar_filter_size");
-                    filter.setLeafSize(size, size, size);
-                    filter.setInputCloud(data);
-                    filter.filter(filtered);
-                    for(auto& p : filtered)
+                    // pcl::VoxelGrid<PointT> filter;
+                    // PointCloudT filtered;
+                    // auto size = CFG_GET_FLOAT("refine_lidar_filter_size");
+                    // filter.setLeafSize(size, size, size);
+                    // filter.setInputCloud(data);
+                    // filter.filter(filtered);
+
+
+                    for(auto& p : *data)
                     {
                         PointMap pos(p.x, p.y, p.z);
-                        spline_lidar->addLidarPlannarMeasurement(
-                            p.time, pos,surfelmaps);
+                        // spline_lidar->addLidarPlannarMeasurement(
+                        //     p.time, pos,surfelmaps);
+                        Sophus::SO3d rot;
+                        Eigen::Vector3d trans;
+                        spline_lidar->getSO3(p.time, rot);
+                        spline_lidar->getRd3(p.time, trans);
+                        // std::cout << "rot: " <<  rot.matrix() << std::endl;
+                        // std::cout << "time: " << p.time << std::endl;
+                        // std::cout << "rd3: " <<  trans.transpose() << std::endl;
+                        PointMap point;
+                        Eigen::Map<Eigen::Vector3f> p_dst(&point.x);
+                        Eigen::Map<Eigen::Vector3f> p_src(&p.x);
+                        p_dst = rot.matrix().cast<float>() * p_src + trans.cast<float>();
+                        Eigen::Vector4f plane_coffe;
+                        int index;
+                        if(!pcl_isfinite(point.x) || !pcl_isfinite(point.y) || !pcl_isfinite(point.z))continue;
+                        if(!surfelmaps.serachNearestPlane(point, surfelmaps.resolution * 10, plane_coffe, index)){
+                            continue;
+                        }else if(plane_coffe.block<3,1>(0,0).dot(p_dst) + plane_coffe(3) > 10){
+                            continue;
+                        }
+                        // std::cout << plane_coffe.transpose() << std::endl;
+                        color_maps.at(index)->push_back(point);
                     }
+                    color_maps.push_back(map);
+
+                    showPcl<PointMap>(color_maps, color, map_size,"aaa");
                 }else{
                     for(auto&p : *data){
                         PointMap pos(p.x, p.y, p.z);
@@ -586,29 +687,58 @@ public:
                 spline_lidar->addIMUAccelMeasurement(data.timestamp, data.accel, g, bias_a, q_ItoL, t_ItoL);
             }
         }
-    // Eigen::Vector3d bias_a = Eigen::Vector3d(9.63036e-05,-0.000233096,0.00166143);
-    // Eigen::Vector3d bias_g = Eigen::Vector3d(0.000519598,0.000937668,0.00124568);
-    // Eigen::Vector3d t_ItoL = Eigen::Vector3d(-0.31208,-0.12331,-0.0595447);
-        // spline_lidar->lockKnots();
-        // spline_lidar->setParamBound(bias_g.data(), 0, 0.000519597, 0.000519599);
-        // spline_lidar->setParamBound(bias_g.data(), 1, 0.000937667, 0.000937669);
-        // spline_lidar->setParamBound(bias_g.data(), 2, 0.00124567, 0.00124569);
-        // spline_lidar->setParamBound(bias_a.data(), 0, -0.00001, 0.00001);
-        // spline_lidar->setParamBound(bias_a.data(), 1, -0.000233097, -0.000233095);
-        // spline_lidar->setParamBound(bias_a.data(), 2, 0.00166142, 0.00166145);
-        // spline_lidar->setParamBound(t_ItoL.data(), 0, -0.31209, -0.31207);
-        // spline_lidar->setParamBound(t_ItoL.data(), 1, -0.12332, -0.12330);
-        // spline_lidar->setParamBound(t_ItoL.data(), 2, -0.0595448, -0.0595446);
-        // spline_lidar->lockParam(bias_a.data());
-        // spline_lidar->lockParam(bias_g.data());
-        // spline_lidar->lockParam(q_ItoL.coeffs().data());
-        // spline_lidar->lockParam(t_ItoL.data());
-        // spline_lidar->lockParam(g.data());
-        
         spline_lidar->printInfo();
 
         
     }
+
+    // void addImuSplineFactor(slam_utils::PlaneMap<PointMap>& surfelmaps)
+    // {
+    //     spline_imu->resetProblem();
+    //     if(CFG_GET_BOOL("refine_use_plannar")){
+    //         for(int i = 0; i < lidar_data->size(); i++){
+    //             auto& data = lidar_data->at(i).data;
+    //             if(CFG_GET_BOOL("refine_lidar_factor_filter")){
+    //                 pcl::VoxelGrid<PointT> filter;
+    //                 PointCloudT filtered;
+    //                 auto size = CFG_GET_FLOAT("refine_lidar_filter_size");
+    //                 filter.setLeafSize(size, size, size);
+    //                 filter.setInputCloud(data);
+    //                 filter.filter(filtered);
+    //                 for(auto& p : filtered)
+    //                 {
+    //                     Eigen::Vector3f p_vec;
+    //                     if(!spline_imu->pointTransform<float>(
+    //                         Eigen::Map<Eigen::Vector3f>(&p.x), p.time, 
+    //                         p_vec, spline_imu->getStartTime_s()))continue;
+    //                     PointMap pos(p_vec.x(), p_vec.y(), p_vec.z());
+    //                     spline_imu->addLidarPlannarMeasurement(
+    //                         p.time, pos,surfelmaps);
+    //                 }
+    //             }else{
+    //                 for(auto&p : *data){
+    //                     Eigen::Vector3f p_vec;
+    //                     if(!spline_imu->pointTransform<float>(
+    //                         Eigen::Map<Eigen::Vector3f>(&p.x), p.time, 
+    //                         p_vec, spline_imu->getStartTime_s()))continue;
+    //                     PointMap pos(p_vec.x(), p_vec.y(), p_vec.z());
+    //                     spline_imu->addLidarPlannarMeasurement(
+    //                         p.time, pos,surfelmaps);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if(CFG_GET_BOOL("refine_use_imu")){
+    //         for(int i = 0; i < imu_data->size(); i++)
+    //         {
+    //             auto& data = imu_data->at(i);
+    //             spline_imu->addIMUGyroMeasurement(data.timestamp, data.gyro, bias_g, q_ItoL);
+    //             spline_imu->addIMUAccelMeasurement(data.timestamp, data.accel, g, bias_a, q_ItoL, t_ItoL);
+    //         }
+    //     }
+    //     spline_imu->printInfo();      
+    // }
+
     void optimize()
     {
         ceres::Solver::Options options;

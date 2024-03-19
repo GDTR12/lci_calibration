@@ -1,13 +1,13 @@
 ndt_resolution: 0.5
 ndt_filter_size: 0.1
-ndt_epsilon: 0.01
+ndt_epsilon: 0.001
 ndt_step_size: 0.1
 ndt_max_iters: 30
 ndt_show_info: false
 ndt_filter: true
 ndt_planeMinPoints: 10
-ndt_cellMinPoints: 30
-ndt_plane_threshold: 0.2
+ndt_cellMinPoints: 20
+ndt_plane_threshold: 0.5
 ui_normailized: false
 ui_length_orientation: 0.1
 ui_trajectory_show_coord: true
@@ -20,13 +20,13 @@ init_start_iter: 0
 init_end_iter: 123134
 init_show_every_map: false
 init_show_map: true
-init_show_ndt_traj: false
+init_show_ndt_traj: true
 init_show_spline_traj: true
 init_show_aligned_tra: true
 init_show_spline_init_info: false
 init_print_align_info: false
-
-init_show_spline_lidar: false
+init_show_spline_imu_info: true
+init_show_spline_lidar: true
 init_show_spline_lidar_info: true
 init_ndt_show_frame_now: false
 
@@ -36,19 +36,21 @@ refinement_epoch: 10
 refine_show_undistort: false
 refine_show_surfels: true
 refine_cell_size: 0.5
-refine_plane_factor_dis: 0.2
+refine_plane_factor_dis: 0.15
 refine_show_spline_solve_info: true
 refine_ceres_max_iters: 50
-refine_lidar_factor_filter: true
+refine_lidar_factor_filter: false
 refine_lidar_filter_size: 0.1
 refine_solve_num_threads: 12
-refine_map_resolution: 0.01
+refine_map_resolution: 0.1
 refine_use_imu: true
 refine_use_plannar: true
 refine_imu_accel_weight: 0.3
-refine_imu_gyro_weight: 0.6
-refine_imu_lidar_weight: 0.1
+refine_imu_gyro_weight: 0.5
+refine_imu_lidar_weight: 0.2
 
+refine_plane_cellMinPoints: 50
+refine_plane_planarMinPoints: 30
 
 plane_map_show_box: false
 spline_imuaccel_lossfunc_value: 5
@@ -61,6 +63,17 @@ lidar_spline_gyro_use_loss: false
 lidar_spline_gyro_loss_value: 1
 lidar_spline_accel_use_loss: false
 lidar_spline_accel_loss_value: 2
+
+
+
+imu_spline_gyro_use_loss: false
+imu_spline_plannar_use_loss: true
+imu_spline_plannar_loss_value: 0.2
+imu_spline_gyro_use_loss: false
+imu_spline_gyro_loss_value: 1
+imu_spline_accel_use_loss: false
+imu_spline_accel_loss_value: 2
+
 
 tmp_interval: 3
 
